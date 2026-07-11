@@ -247,30 +247,31 @@ test('RULES keys are exactly the Issue Form input-field ids', () => {
   );
 });
 
-// The README restates the threshold numbers as the human-readable bar. That is
-// accepted duplication, kept safe by this drift test: the numbers come from
-// RULES, the size options from the form, so a rule change that skips the README
-// fails CI.
-test('README threshold numbers match RULES, and the size options and blocking set', () => {
+// The README restates the rules as the human-readable bar. That is accepted
+// duplication, kept safe by this drift test. The phrasing per rule property is
+// prose (can't be derived), but the values come from RULES, so coverage is by
+// construction: add a ruled field and its README line becomes required here
+// automatically. Only properties the README actually restates are listed; a
+// property absent from a rule is skipped (e.g. Acceptance Criteria has no
+// length). Size options come from the form, not RULES, so they stay separate.
+const README_RULE_PHRASING = {
+  minLength: (n) => `≥ ${n} chars`,
+  maxLength: (n) => `≤ ${n} chars`,
+  minItems: (n) => `≥ ${n} non-empty checklist item${n === 1 ? '' : 's'}`,
+  blocking: (sizes) => sizes.map((s) => `\`${s}\``).join(' / '),
+};
+
+test('README restates every drift-guarded rule property, and the size options', () => {
   const readme = read('README.md');
-  assert.ok(
-    readme.includes(`≥ ${RULES.context.minLength} chars`),
-    'README Context min-length drifted from RULES',
-  );
-  assert.ok(
-    readme.includes(`≤ ${RULES.context.maxLength} chars`),
-    'README Context max-length drifted from RULES',
-  );
-  assert.ok(
-    readme.includes(`≥ ${RULES['out-of-scope'].minLength} chars`),
-    'README Out of Scope min-length drifted from RULES',
-  );
+  for (const [id, rule] of Object.entries(RULES)) {
+    for (const [prop, render] of Object.entries(README_RULE_PHRASING)) {
+      if (rule[prop] === undefined) continue;
+      const phrase = render(rule[prop]);
+      assert.ok(readme.includes(phrase), `README is missing "${phrase}" for ${id}.${prop}`);
+    }
+  }
   assert.ok(
     readme.includes(fieldById('size').options.join(' / ')),
     'README size options drifted from the Issue Form',
-  );
-  assert.ok(
-    readme.includes(RULES.size.blocking.map((s) => `\`${s}\``).join(' / ')),
-    'README blocking sizes drifted from RULES',
   );
 });
