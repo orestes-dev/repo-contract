@@ -3,24 +3,7 @@ import assert from "node:assert/strict";
 
 import { sweep, buildQuery } from "./sweep.js";
 import { LABEL } from "./schema.js";
-
-const goodBody = [
-  "### Context",
-  "",
-  "The dashboard refetches everything on every keystroke, which is slow. We want it debounced so typing stays responsive.",
-  "",
-  "### Acceptance Criteria",
-  "",
-  "- [ ] Input is debounced to 300ms",
-  "",
-  "### Out of Scope",
-  "",
-  "- Redesigning the search UI",
-  "",
-  "### Size",
-  "",
-  "S",
-].join("\n");
+import { goodBody } from "./fixtures.js";
 
 const failingBody = goodBody.replace("### Size", "### Size\n\nL\n");
 

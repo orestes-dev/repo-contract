@@ -14,6 +14,7 @@ import {
 } from "./validator.js";
 import { LABEL, STATUS, RULES } from "./schema.js";
 import { loadForm } from "./form.js";
+import { goodBody as good } from "./fixtures.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
@@ -24,26 +25,6 @@ const fieldById = (id) => FIELDS.find((f) => f.id === id);
 
 // The check for a given field key, so assertions read against one scorecard line.
 const checkFor = (result, key) => result.checks.find((c) => c.key === key);
-
-const good = [
-  "### Context",
-  "",
-  "The dashboard refetches everything on every keystroke, which is slow. We want it debounced so typing stays responsive.",
-  "",
-  "### Acceptance Criteria",
-  "",
-  "- [ ] Input is debounced to 300ms",
-  "- [ ] No refetch fires until typing pauses",
-  "",
-  "### Out of Scope",
-  "",
-  "- Redesigning the search UI",
-  "",
-  "### Size",
-  "",
-  "S",
-  "",
-].join("\n");
 
 test("a complete, well-formed issue passes every check", () => {
   const result = validate(good);

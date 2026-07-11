@@ -9,27 +9,10 @@ import { run } from "./action.js";
 import { validate } from "./validator.js";
 import { renderComment } from "./report.js";
 import { LABEL, OVERRIDE_LABEL, OVERRIDE_HEADING } from "./schema.js";
+import { goodBody } from "./fixtures.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
-
-const goodBody = [
-  "### Context",
-  "",
-  "The dashboard refetches everything on every keystroke, which is slow. We want it debounced so typing stays responsive.",
-  "",
-  "### Acceptance Criteria",
-  "",
-  "- [ ] Input is debounced to 300ms",
-  "",
-  "### Out of Scope",
-  "",
-  "- Redesigning the search UI",
-  "",
-  "### Size",
-  "",
-  "S",
-].join("\n");
 
 const failingBody = goodBody.replace("### Size", "### Size\n\nL\n");
 
