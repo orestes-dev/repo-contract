@@ -164,9 +164,11 @@ function checkEnum(field, rule, value) {
  */
 function checkChecklist(field, rule, value) {
   const { id, label } = field;
+  const min = rule.minItems ?? 1;
   const items = countChecklistItems(value);
-  if (items < (rule.minItems ?? 1)) {
-    return check(id, label, STATUS.FAIL, 'must contain at least one checklist item (`- [ ]`)');
+  if (items < min) {
+    const need = min === 1 ? 'at least one checklist item' : `at least ${min} checklist items`;
+    return check(id, label, STATUS.FAIL, `must contain ${need} (\`- [ ]\`)`);
   }
   return check(id, label, STATUS.PASS, `${items} checklist item${items === 1 ? '' : 's'}`);
 }
