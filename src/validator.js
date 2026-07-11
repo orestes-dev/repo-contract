@@ -285,12 +285,26 @@ export const warnings = (checks) =>
   checks.filter((c) => c.status === STATUS.WARN);
 
 /**
+ * The worst status present across the checks: fail beats warn beats pass. The
+ * single source of "worst wins" the label and both renderers key off.
+ * @param {Check[]} checks
+ * @returns {'pass'|'warn'|'fail'}
+ */
+export function worstStatus(checks) {
+  if (checks.some((c) => c.status === STATUS.FAIL)) return STATUS.FAIL;
+  if (checks.some((c) => c.status === STATUS.WARN)) return STATUS.WARN;
+  return STATUS.PASS;
+}
+
+const LABEL_BY_STATUS = {
+  [STATUS.FAIL]: LABEL.FAILING,
+  [STATUS.WARN]: LABEL.WARNING,
+  [STATUS.PASS]: LABEL.PASS,
+};
+
+/**
  * Which quality label the scorecard implies: worst wins.
  * @param {Scorecard} scorecard
  * @returns {string} One of the mutually-exclusive `LABEL` values.
  */
-export function labelFor({ checks }) {
-  if (checks.some((c) => c.status === STATUS.FAIL)) return LABEL.FAILING;
-  if (checks.some((c) => c.status === STATUS.WARN)) return LABEL.WARNING;
-  return LABEL.PASS;
-}
+export const labelFor = ({ checks }) => LABEL_BY_STATUS[worstStatus(checks)];

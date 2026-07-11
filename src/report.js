@@ -7,6 +7,7 @@ import {
   OVERRIDE_LABEL,
   OVERRIDE_HEADING,
 } from "./schema.js";
+import { worstStatus } from "./validator.js";
 
 /** @typedef {import('./validator.js').Check} Check */
 
@@ -23,16 +24,25 @@ const WARN_FOOTER = "> All required checks pass. Warnings are informational.";
 const PASS_FOOTER =
   "> All checks pass. This issue meets the structural quality bar.";
 
+const FOOTER_BY_STATUS = {
+  [STATUS.FAIL]: FIX_FOOTER,
+  [STATUS.WARN]: WARN_FOOTER,
+  [STATUS.PASS]: PASS_FOOTER,
+};
+
+// Terminal one-liner for the run's worst status.
+const CLI_STATUS_LABEL = {
+  [STATUS.FAIL]: "FAILED",
+  [STATUS.WARN]: "passed with warnings",
+  [STATUS.PASS]: "passed",
+};
+
 /**
  * The footer line for the worst status in the scorecard.
  * @param {Check[]} checks
  * @returns {string}
  */
-function footer(checks) {
-  if (checks.some((c) => c.status === STATUS.FAIL)) return FIX_FOOTER;
-  if (checks.some((c) => c.status === STATUS.WARN)) return WARN_FOOTER;
-  return PASS_FOOTER;
-}
+const footer = (checks) => FOOTER_BY_STATUS[worstStatus(checks)];
 
 /**
  * Bot-comment markdown, with the hidden marker for in-place updates.
@@ -54,12 +64,9 @@ export function renderComment({ checks }) {
  * @returns {string}
  */
 export function renderCli({ checks }) {
-  const worst = checks.some((c) => c.status === STATUS.FAIL)
-    ? "FAILED"
-    : checks.some((c) => c.status === STATUS.WARN)
-      ? "passed with warnings"
-      : "passed";
-  const lines = [`Issue quality gate: ${worst}`];
+  const lines = [
+    `Issue quality gate: ${CLI_STATUS_LABEL[worstStatus(checks)]}`,
+  ];
   for (const c of checks) {
     lines.push(`  ${ICON[c.status]} ${c.label}: ${strip(c.message)}`);
   }
