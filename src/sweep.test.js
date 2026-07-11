@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sweep, buildQuery } from '../src/sweep.js';
-import { LABEL } from '../src/schema.js';
+import { sweep, buildQuery } from './sweep.js';
+import { LABEL } from './schema.js';
 
 const goodBody = [
   '### Context',

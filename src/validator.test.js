@@ -11,8 +11,8 @@ import {
   hasOverrideRationale,
   failures,
   warnings,
-} from '../src/validator.js';
-import { LABEL, FIELD, STATUS } from '../src/schema.js';
+} from './validator.js';
+import { LABEL, FIELD, STATUS } from './schema.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');

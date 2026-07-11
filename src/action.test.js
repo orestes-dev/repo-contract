@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { run } from '../src/action.js';
-import { validate } from '../src/validator.js';
-import { renderComment } from '../src/report.js';
-import { LABEL, OVERRIDE_LABEL, OVERRIDE_HEADING } from '../src/schema.js';
+import { run } from './action.js';
+import { validate } from './validator.js';
+import { renderComment } from './report.js';
+import { LABEL, OVERRIDE_LABEL, OVERRIDE_HEADING } from './schema.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
