@@ -76,6 +76,13 @@ or an `issue-quality:*` label. The gate writes its own labels as the CI bot,
 whose events are excluded, so it never re-triggers itself; a human hand-editing
 a quality label re-runs the gate, so manual changes self-heal.
 
+Run `init` from the repository root: `.github/` is only read there. Blank issues
+(and any `gh issue create` with a freeform body) skip the Issue Form and land as
+`issue-quality:failing`, so nothing bypasses the gate. To also stop people
+opening blank issues, add `.github/ISSUE_TEMPLATE/config.yml` with
+`blank_issues_enabled: false` yourself; `init` deliberately leaves that
+repo-wide choice to you.
+
 ## Pre-flight validation (agent side)
 
 Before creating an issue via `gh issue create`, run the same validator locally:

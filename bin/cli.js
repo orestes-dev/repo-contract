@@ -26,6 +26,18 @@ const TEMPLATES = [
 ];
 
 function cmdInit() {
+  // Soft guard against the one silent foot-gun: run from a subdirectory and the
+  // files land where GitHub never looks. `.github/` is only read at the repo
+  // root, whose worktree carries a `.git` entry (a directory in a normal clone,
+  // a file in a linked worktree). Warn but proceed: scaffolding into a fresh
+  // dir before `git init` is legitimate.
+  if (!existsSync(resolve(process.cwd(), '.git'))) {
+    console.warn(
+      'warning: no .git in the current directory. GitHub only reads .github/ ' +
+        'from the repository root; run this there or the workflow will not run.',
+    );
+  }
+
   for (const { from, to } of TEMPLATES) {
     const dest = resolve(process.cwd(), to);
     if (existsSync(dest)) {
