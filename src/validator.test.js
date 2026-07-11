@@ -251,7 +251,7 @@ test('RULES keys are exactly the Issue Form input-field ids', () => {
 // accepted duplication, kept safe by this drift test: the numbers come from
 // RULES, the size options from the form, so a rule change that skips the README
 // fails CI.
-test('README threshold numbers match RULES and the size options', () => {
+test('README threshold numbers match RULES, and the size options and blocking set', () => {
   const readme = read('README.md');
   assert.ok(
     readme.includes(`≥ ${RULES.context.minLength} chars`),
@@ -268,5 +268,9 @@ test('README threshold numbers match RULES and the size options', () => {
   assert.ok(
     readme.includes(fieldById('size').options.join(' / ')),
     'README size options drifted from the Issue Form',
+  );
+  assert.ok(
+    readme.includes(RULES.size.blocking.map((s) => `\`${s}\``).join(' / ')),
+    'README blocking sizes drifted from RULES',
   );
 });
