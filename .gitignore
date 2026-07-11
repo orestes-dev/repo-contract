@@ -1,0 +1,4 @@
+# Yarn Berry (node-modules linker): deps are installed, never committed. They
+# are provisioned at action runtime (see action.yml) and cached on the runner.
+node_modules/
+.yarn/*

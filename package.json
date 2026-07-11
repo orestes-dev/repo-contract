@@ -5,14 +5,16 @@
   "description": "Deterministic quality gate for GitHub issues so they land well-scoped and actionable.",
   "author": "Orestes Carracedo <orestes@orestes.io>",
   "type": "module",
-  "bin": {
-    "issue-quality-gate": "bin/cli.js"
-  },
+  "packageManager": "yarn@4.16.0",
+  "bin": "bin/cli.js",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "test": "node --test"
   },
-  "license": "AGPL-3.0-or-later"
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "yaml": "^2.9.0"
+  }
 }

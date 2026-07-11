@@ -7,6 +7,32 @@ author: Orestes Carracedo
 runs:
   using: composite
   steps:
+    # The validator parses this action's Issue Form at runtime, which needs the
+    # `yaml` dependency. Install it (cached on the runner, keyed by the action's
+    # own lockfile) into `$GITHUB_ACTION_PATH` before running the gate.
+    - name: Set up Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: "24"
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable
+    # hashFiles() is scoped to GITHUB_WORKSPACE and cannot see the action's own
+    # yarn.lock, so hash it directly and key the cache on that.
+    - name: Compute dependency cache key
+      id: deps
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: echo "key=${RUNNER_OS}-issue-quality-gate-$(shasum yarn.lock | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+    - name: Restore dependency cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ github.action_path }}/node_modules
+        key: ${{ steps.deps.outputs.key }}
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: yarn install --immutable
     - name: Validate issue
       shell: bash
       run: node "$GITHUB_ACTION_PATH/src/action.js"
