@@ -10,6 +10,15 @@ import { renderCli, PR_PRESENTATION } from "../src/report.js";
 import { init } from "../src/commands/init.js";
 import { sweep } from "../src/commands/sweep.js";
 
+/** Usage banner shared by the help path (stdout, exit 0) and the unknown-command path (stderr, exit 2). */
+const USAGE =
+  "usage: quality-gate <init|validate|validate-pr|sweep>\n" +
+  "  init [--force]   scaffold the Issue Form + workflow into this repo\n" +
+  "                   (fails on drifted files; --force upgrades in place)\n" +
+  "  validate <file> [--title <title>]     validate an issue body file (exit 1 on hard errors)\n" +
+  "  validate-pr <file> [--title <title>]  validate a PR body file (exit 1 on hard errors)\n" +
+  "  sweep            backfill labels + scorecards on a repo's open issues";
+
 /**
  * Validate an issue body file and print the scorecard. Exits 1 on hard errors,
  * 2 on usage error. An optional `--title <title>` also checks the title against
@@ -73,15 +82,14 @@ async function main() {
       return cmdValidatePr(rest);
     case "sweep":
       return sweep();
+    case "help":
+    case "--help":
+    case "-h":
+      console.log(USAGE);
+      process.exit(0);
+    // eslint-disable-next-line no-fallthrough -- unreachable: the help cases above call process.exit
     default:
-      console.error(
-        "usage: quality-gate <init|validate|validate-pr|sweep>\n" +
-          "  init [--force]   scaffold the Issue Form + workflow into this repo\n" +
-          "                   (fails on drifted files; --force upgrades in place)\n" +
-          "  validate <file> [--title <title>]     validate an issue body file (exit 1 on hard errors)\n" +
-          "  validate-pr <file> [--title <title>]  validate a PR body file (exit 1 on hard errors)\n" +
-          "  sweep            backfill labels + scorecards on a repo's open issues",
-      );
+      console.error(USAGE);
       process.exit(2);
   }
 }

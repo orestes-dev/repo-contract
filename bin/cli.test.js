@@ -192,6 +192,28 @@ test("validate-pr exits 2 on a usage error when no file is given", () => {
   });
 });
 
+test("help prints usage to stdout and exits 0", () => {
+  for (const arg of ["help", "--help", "-h"]) {
+    const { status, stdout, stderr } = runCli(ROOT, arg);
+    assert.equal(status, 0, `${arg} should exit 0`);
+    assert.match(
+      stdout,
+      /usage: quality-gate <init\|validate\|validate-pr\|sweep>/,
+    );
+    assert.equal(stderr, "");
+  }
+});
+
+test("an unknown command prints usage to stderr and exits 2", () => {
+  const { status, stdout, stderr } = runCli(ROOT, "bogus");
+  assert.equal(status, 2);
+  assert.match(
+    stderr,
+    /usage: quality-gate <init\|validate\|validate-pr\|sweep>/,
+  );
+  assert.equal(stdout, "");
+});
+
 test("usage lists the supported commands and drops the removed scaffold command", () => {
   const { status, stderr } = runCli(ROOT, "bogus");
   assert.equal(status, 2);
