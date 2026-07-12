@@ -221,9 +221,11 @@ events. It checks structural presence, never conformance:
 
 - **Title**: Conventional Commits `type(scope): summary`, same rule as issues.
 - **Required sections**: `## Summary` and `## Verification` present and
-  non-empty. A `## Divergence` section ships in
-  [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but its
-  conditional rule is a later slice, so its presence is not yet enforced.
+  non-empty.
+- **Divergence**: the `## Divergence` section is optional until its checkbox is
+  checked. A checked flag with no written rationale hard-fails; unchecked (or
+  checked with a rationale) passes. The gate checks the rationale is present,
+  never whether the code conforms to the issue.
 
 The PR structure is defined by a code descriptor (`src/pr-validator.js`), the
 source of truth the Markdown template is drift-tested against. Any error (a

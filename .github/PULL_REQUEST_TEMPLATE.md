@@ -17,6 +17,12 @@ reviewer will see, not the file list. Required. -->
 
 ## Divergence
 
-<!-- Where this PR departs from the linked issue's plan, and why. Leave the
-guidance in place if there is nothing to report; the gate does not require this
-section yet. -->
+<!-- Did the implementation depart from the linked issue's original what/why? If
+so, check the box and explain why below. If not, leave it unchecked and skip the
+rest; the section is optional. -->
+
+- [ ] This PR diverges from the linked issue's original what/why.
+
+<!-- If you checked the box, explain the divergence and why it's the right call,
+in your own voice. The gate checks a rationale is present, not whether it's
+honest; that's the reviewer's job. -->

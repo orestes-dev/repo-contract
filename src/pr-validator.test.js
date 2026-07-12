@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 import { run } from "./action.js";
-import { validatePr, PR_SECTIONS } from "./pr-validator.js";
+import { validatePr, PR_SECTIONS, DIVERGENCE_FLAG } from "./pr-validator.js";
 import { renderComment, PR_PRESENTATION } from "./report.js";
 import {
   PR_LABEL,
@@ -94,9 +94,65 @@ test("validatePr fails a non-Conventional-Commits title", () => {
   assert.equal(title.status, STATUS.FAIL);
 });
 
-test("validatePr does not enforce the non-required Divergence section", () => {
+test("validatePr passes Divergence when the flag is unchecked", () => {
   const { checks } = validatePr(goodBody, goodTitle);
-  assert.ok(!checks.some((c) => c.label === "Divergence"));
+  const divergence = checks.find((c) => c.label === "Divergence");
+  assert.equal(divergence.status, STATUS.PASS);
+  assert.equal(worst(checks), STATUS.PASS);
+});
+
+// A Divergence section with the flag checked but no rationale beyond it.
+const flaggedNoRationale = [
+  goodBody,
+  "## Divergence",
+  "",
+  `- [x] ${DIVERGENCE_FLAG}`,
+  "",
+  "<!-- explain the divergence here -->",
+  "",
+].join("\n");
+
+// The same, with a written rationale under the checked flag.
+const flaggedWithRationale = [
+  goodBody,
+  "## Divergence",
+  "",
+  `- [x] ${DIVERGENCE_FLAG}`,
+  "",
+  "Dropped the caching layer the issue asked for; profiling showed it was noise.",
+  "",
+].join("\n");
+
+// The flag left unchecked, with the template guidance still in place.
+const flagUnchecked = [
+  goodBody,
+  "## Divergence",
+  "",
+  `- [ ] ${DIVERGENCE_FLAG}`,
+  "",
+  "<!-- explain the divergence here -->",
+  "",
+].join("\n");
+
+test("validatePr fails when the Divergence flag is checked but no rationale is written", () => {
+  const { checks } = validatePr(flaggedNoRationale, goodTitle);
+  const divergence = checks.find((c) => c.label === "Divergence");
+  assert.equal(divergence.status, STATUS.FAIL);
+  assert.equal(worst(checks), STATUS.FAIL);
+});
+
+test("validatePr passes when the Divergence flag is checked and a rationale is written", () => {
+  const { checks } = validatePr(flaggedWithRationale, goodTitle);
+  const divergence = checks.find((c) => c.label === "Divergence");
+  assert.equal(divergence.status, STATUS.PASS);
+  assert.equal(worst(checks), STATUS.PASS);
+});
+
+test("validatePr passes an unchecked Divergence flag with only guidance left", () => {
+  const { checks } = validatePr(flagUnchecked, goodTitle);
+  const divergence = checks.find((c) => c.label === "Divergence");
+  assert.equal(divergence.status, STATUS.PASS);
+  assert.equal(worst(checks), STATUS.PASS);
 });
 
 // --- run() over the PR gate: pass / fail / override / bot ---
@@ -235,6 +291,12 @@ test("PULL_REQUEST_TEMPLATE.md headings and required flags match PR_SECTIONS", (
       s.required,
       `${s.heading} required flag drifted from the template guidance`,
     );
+    if (s.flag) {
+      assert.ok(
+        sections[s.heading].includes(`- [ ] ${s.flag}`),
+        `${s.heading} flag checkbox drifted from the template`,
+      );
+    }
   }
 });
 
