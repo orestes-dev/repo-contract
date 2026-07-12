@@ -102,7 +102,15 @@ test("validatePr fails when a required section is missing", () => {
   const { checks } = validatePr(missingVerification, goodTitle);
   const verification = checks.find((c) => c.label === "Verification");
   assert.equal(verification.status, STATUS.FAIL);
+  assert.equal(verification.message, "missing");
   assert.equal(worst(checks), STATUS.FAIL);
+});
+
+test("a present required section renders `present`, with no char-count parenthetical", () => {
+  const { checks } = validatePr(goodBody, goodTitle);
+  const summary = checks.find((c) => c.label === "Summary");
+  assert.equal(summary.status, STATUS.PASS);
+  assert.equal(summary.message, "present");
 });
 
 test("validatePr fails a non-Conventional-Commits title", () => {
@@ -162,6 +170,8 @@ test("validatePr passes when the Divergence flag is checked and a rationale is w
   const { checks } = validatePr(flaggedWithRationale, goodTitle);
   const divergence = checks.find((c) => c.label === "Divergence");
   assert.equal(divergence.status, STATUS.PASS);
+  assert.equal(divergence.message, "flagged with rationale");
+  assert.doesNotMatch(divergence.message, /\d+\s*chars/);
   assert.equal(worst(checks), STATUS.PASS);
 });
 

@@ -63,14 +63,14 @@ leaves an issue without one.
 ```md
 ### Issue Quality Checklist
 
-- ✅ **Title**: feat(search): debounce the query input
-- ✅ **Context**: present (118 chars)
-- ✅ **Acceptance Criteria**: 2 checklist items
-- ❌ **Out of Scope**: missing or empty
+- ✅ **Title**: Conventional Commits: `type(scope): summary`
+- ✅ **Context**: 30–1500 characters
+- ✅ **Acceptance Criteria**: at least one checklist item
+- ❌ **Out of Scope**: at least 10 characters
 - ⚠️ **Decisions**: recommended; add it so implementers aren't left guessing
-- ✅ **Affected files / entry points**: present (28 chars)
+- ✅ **Affected files / entry points**: present
 - ✅ **Depends on**: optional; not provided
-- ✅ **Size**: S
+- ✅ **Size**: XS, S, or M lands as one issue
 ```
 
 ### Override

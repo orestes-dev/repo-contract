@@ -88,9 +88,9 @@ function checkSection(sections, { heading }) {
   const value = (sections[heading] ?? "").trim();
   const key = heading.toLowerCase();
   if (value === "") {
-    return check(key, heading, STATUS.FAIL, "missing or empty");
+    return check(key, heading, STATUS.FAIL, "missing");
   }
-  return check(key, heading, STATUS.PASS, `present (${value.length} chars)`);
+  return check(key, heading, STATUS.PASS, "present");
 }
 
 /**
@@ -175,12 +175,7 @@ function checkDivergence(sections, { heading, flag = "" }) {
       "flagged but missing a rationale; explain the divergence",
     );
   }
-  return check(
-    key,
-    heading,
-    STATUS.PASS,
-    `flagged with rationale (${rationale.length} chars)`,
-  );
+  return check(key, heading, STATUS.PASS, "flagged with rationale");
 }
 
 /** The scorecard key/label for the transitive linked-issue readiness check. */

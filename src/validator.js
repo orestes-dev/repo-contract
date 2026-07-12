@@ -199,8 +199,23 @@ export const check = (key, label, status, message) => ({
 });
 
 /**
+ * Oxford-comma "or" list: `["XS"]` → `XS`, `["XS","S"]` → `XS or S`,
+ * `["XS","S","M"]` → `XS, S, or M`.
+ * @param {string[]} items
+ * @returns {string}
+ */
+function orList(items) {
+  if (items.length <= 1) return items.join("");
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, or ${items[items.length - 1]}`;
+}
+
+/**
  * Dropdown: membership in the field's options, plus RULES `blocking` values too
- * big to land as one issue. Both hard.
+ * big to land as one issue. Both hard. The message names the rule (the sizes
+ * that land as one issue, derived from options minus `blocking`), identical on
+ * pass and fail; a blocking value appends a value-free imperative, never the
+ * author's selected value.
  * @param {Field} field
  * @param {Rule|undefined} rule
  * @param {string} value
@@ -208,23 +223,15 @@ export const check = (key, label, status, message) => ({
  */
 function checkEnum(field, rule, value) {
   const { id, heading, options = [] } = field;
-  if (!options.includes(value)) {
-    return check(
-      id,
-      heading,
-      STATUS.FAIL,
-      `must be one of ${options.join(", ")}`,
-    );
+  const blocking = rule?.blocking ?? [];
+  const core = `${orList(options.filter((o) => !blocking.includes(o)))} lands as one issue`;
+  if (!options.includes(value) || blocking.includes(value)) {
+    const suffix = blocking.includes(value)
+      ? " — split it into smaller issues"
+      : "";
+    return check(id, heading, STATUS.FAIL, core + suffix);
   }
-  if ((rule?.blocking ?? []).includes(value)) {
-    return check(
-      id,
-      heading,
-      STATUS.FAIL,
-      `${value} is too big to land as one issue; split it into smaller issues`,
-    );
-  }
-  return check(id, heading, STATUS.PASS, value);
+  return check(id, heading, STATUS.PASS, core);
 }
 
 /**
@@ -237,24 +244,36 @@ function checkEnum(field, rule, value) {
 function checkChecklist(field, rule, value) {
   const { id, heading } = field;
   const min = rule.minItems ?? 1;
+  const core =
+    min === 1
+      ? "at least one checklist item"
+      : `at least ${min} checklist items`;
   const items = countChecklistItems(value);
-  if (items < min) {
-    const need =
-      min === 1
-        ? "at least one checklist item"
-        : `at least ${min} checklist items`;
-    return check(id, heading, STATUS.FAIL, `must contain ${need} (\`- [ ]\`)`);
-  }
-  return check(
-    id,
-    heading,
-    STATUS.PASS,
-    `${items} checklist item${items === 1 ? "" : "s"}`,
-  );
+  const status = items < min ? STATUS.FAIL : STATUS.PASS;
+  return check(id, heading, status, core);
 }
 
 /**
- * Prose: `minLength` is hard, `maxLength` warning-only. Worst status wins.
+ * The rule a prose field states: its length bounds as a phrase, derived from the
+ * rule so it stays the single source of truth. A field with no length rule is
+ * presence-only, so it states `present`.
+ * @param {Rule|undefined} rule
+ * @returns {string}
+ */
+function proseCore(rule) {
+  const min = rule?.minLength;
+  const max = rule?.maxLength;
+  if (min && max) return `${min}–${max} characters`;
+  if (min) return `at least ${min} characters`;
+  if (max) return `at most ${max} characters`;
+  return "present";
+}
+
+/**
+ * Prose: `minLength` is hard, `maxLength` warning-only. Worst status wins. The
+ * message states the rule (the length bounds), identical across statuses; only
+ * the icon carries the verdict, and a `long` warning appends a value-free
+ * imperative. The author's measured length is never printed.
  * @param {Field} field
  * @param {Rule|undefined} rule
  * @param {string} value
@@ -262,25 +281,16 @@ function checkChecklist(field, rule, value) {
  */
 function checkProse(field, rule, value) {
   const { id, heading } = field;
+  const core = proseCore(rule);
   const min = rule?.minLength;
   if (min && value.length < min) {
-    return check(
-      id,
-      heading,
-      STATUS.FAIL,
-      `too short (${value.length} chars, need at least ${min})`,
-    );
+    return check(id, heading, STATUS.FAIL, core);
   }
   const max = rule?.maxLength;
   if (max && value.length > max) {
-    return check(
-      id,
-      heading,
-      STATUS.WARN,
-      `long (${value.length} chars, over ${max}); trim narrative bloat`,
-    );
+    return check(id, heading, STATUS.WARN, `${core} — trim narrative bloat`);
   }
-  return check(id, heading, STATUS.PASS, `present (${value.length} chars)`);
+  return check(id, heading, STATUS.PASS, core);
 }
 
 /**
@@ -294,15 +304,7 @@ function checkProse(field, rule, value) {
 function checkField(sections, field, rule) {
   const { id, heading, required, type } = field;
   const value = fieldValue(sections, heading);
-  if (value === "") {
-    if (required) {
-      return check(
-        id,
-        heading,
-        STATUS.FAIL,
-        type === "dropdown" ? "missing" : "missing or empty",
-      );
-    }
+  if (value === "" && !required) {
     if (rule?.warnIfEmpty) {
       return check(
         id,
@@ -313,6 +315,9 @@ function checkField(sections, field, rule) {
     }
     return check(id, heading, STATUS.PASS, "optional; not provided");
   }
+  // A required-but-empty field falls through to its type check, which fails
+  // against the rule it can't meet: the scorecard states the rule to satisfy
+  // (`30–1500 characters`), the icon conveying "unmet", never "missing".
   if (type === "dropdown") return checkEnum(field, rule, value);
   if (rule?.checklist) return checkChecklist(field, rule, value);
   return checkProse(field, rule, value);
@@ -327,16 +332,12 @@ function checkField(sections, field, rule) {
  */
 export function checkTitle(title) {
   const value = String(title ?? "").trim();
-  if (value === "") return check("title", "Title", STATUS.FAIL, "missing");
-  if (!CONVENTIONAL_TITLE.test(value)) {
-    return check(
-      "title",
-      "Title",
-      STATUS.FAIL,
-      "must follow Conventional Commits: `type(scope): summary`",
-    );
-  }
-  return check("title", "Title", STATUS.PASS, value);
+  // The message states the rule, identical on pass and fail; the icon is the
+  // sole verdict, never the author's title verbatim.
+  const core = "Conventional Commits: `type(scope): summary`";
+  const status =
+    value !== "" && CONVENTIONAL_TITLE.test(value) ? STATUS.PASS : STATUS.FAIL;
+  return check("title", "Title", status, core);
 }
 
 /**

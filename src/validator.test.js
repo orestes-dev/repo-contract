@@ -75,7 +75,9 @@ test("too-short context is a hard error", () => {
   );
   const context = checkFor(validate(body), "context");
   assert.equal(context.status, STATUS.FAIL);
-  assert.match(context.message, /too short/);
+  // The message states the rule, not the author's measured length.
+  assert.equal(context.message, "30–1500 characters");
+  assert.doesNotMatch(context.message, /\d+\s*chars/);
 });
 
 test("acceptance criteria without a checklist item is a hard error", () => {
@@ -106,15 +108,22 @@ test("size L blocks with a hard error", () => {
   const result = validate(body);
   const size = checkFor(result, "size");
   assert.equal(size.status, STATUS.FAIL);
-  assert.match(size.message, /too big/);
+  // States the rule (which sizes land as one issue) plus a value-free
+  // imperative; never echoes the selected `L`.
+  assert.equal(
+    size.message,
+    "XS, S, or M lands as one issue — split it into smaller issues",
+  );
+  assert.doesNotMatch(size.message, /\bL\b/);
   assert.equal(labelFor(result), LABEL.FAILING);
 });
 
-test("an unknown size value is a hard error", () => {
+test("an unknown size value is a hard error stating the rule, not the value", () => {
   const body = good.replace("\nS\n", "\nHuge\n");
   const size = checkFor(validate(body), "size");
   assert.equal(size.status, STATUS.FAIL);
-  assert.match(size.message, /must be one of/);
+  assert.equal(size.message, "XS, S, or M lands as one issue");
+  assert.doesNotMatch(size.message, /Huge/);
 });
 
 test("overlong context is a warning, not an error", () => {
@@ -127,7 +136,9 @@ test("overlong context is a warning, not an error", () => {
   assert.deepEqual(failures(result.checks), []);
   const context = checkFor(result, "context");
   assert.equal(context.status, STATUS.WARN);
-  assert.match(context.message, /long/);
+  // Same rule core as the pass line, plus a value-free imperative; no length.
+  assert.equal(context.message, "30–1500 characters — trim narrative bloat");
+  assert.doesNotMatch(context.message, /\d+\s*chars/);
   assert.equal(labelFor(result), LABEL.WARNING);
 });
 
@@ -328,6 +339,67 @@ test("a bad title fails the whole issue even when the body is clean", () => {
   const result = validate(good, "no type prefix here");
   assert.equal(checkFor(result, "title").status, STATUS.FAIL);
   assert.equal(labelFor(result), LABEL.FAILING);
+});
+
+test("checkTitle states the rule identically on pass and fail, never the title", () => {
+  const pass = checkTitle("feat: add pagination");
+  const fail = checkTitle("no type prefix here");
+  assert.equal(pass.status, STATUS.PASS);
+  assert.equal(fail.status, STATUS.FAIL);
+  // Identical message core; only the icon (status) differs.
+  assert.equal(pass.message, fail.message);
+  assert.equal(pass.message, "Conventional Commits: `type(scope): summary`");
+  assert.doesNotMatch(fail.message, /no type prefix/);
+});
+
+test("no passing scorecard line echoes an author-supplied value", () => {
+  const result = validate(good, "feat(search): debounce the query input");
+  for (const c of result.checks.filter((c) => c.status === STATUS.PASS)) {
+    assert.doesNotMatch(
+      c.message,
+      /\d+\s*chars/,
+      `${c.key} still prints a char count`,
+    );
+  }
+  // No verbatim title, selected size, or item count on the pass lines.
+  assert.doesNotMatch(
+    checkFor(result, "title").message,
+    /debounce the query input/,
+  );
+  assert.equal(
+    checkFor(result, "size").message,
+    "XS, S, or M lands as one issue",
+  );
+  assert.equal(checkFor(result, "context").message, "30–1500 characters");
+  assert.equal(
+    checkFor(result, "out-of-scope").message,
+    "at least 10 characters",
+  );
+  assert.equal(
+    checkFor(result, "acceptance-criteria").message,
+    "at least one checklist item",
+  );
+  // A prose field with no length rule is presence-only.
+  assert.equal(checkFor(result, "affected-files").message, "present");
+});
+
+test("a required-but-empty field states its rule, never the word missing", () => {
+  const body = [
+    "### Acceptance Criteria",
+    "",
+    "- [ ] something",
+    "",
+    "### Out of Scope",
+    "",
+    "- Rewrites",
+    "",
+    "### Size",
+    "",
+    "S",
+  ].join("\n");
+  const context = checkFor(validate(body), "context");
+  assert.equal(context.status, STATUS.FAIL);
+  assert.equal(context.message, "30–1500 characters");
 });
 
 // RULES and the FIELDS descriptor must be in bijection: every rule maps to a
