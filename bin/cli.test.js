@@ -13,8 +13,6 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadForm } from "../src/form.js";
-
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(ROOT, "bin", "cli.js");
 
@@ -192,18 +190,11 @@ test("validate-pr exits 2 on a usage error when no file is given", () => {
   });
 });
 
-test("scaffold prints one `### <heading>` per form field, in form order", () => {
-  const { status, stdout } = runCli(ROOT, "scaffold");
-  assert.equal(status, 0);
-  // Drift-safe: the expected headings are derived from the same runtime form
-  // read, so renaming or reordering a field moves both sides together.
-  const expected = loadForm().map((field) => `### ${field.label}`);
-  const headings = stdout.split("\n").filter((line) => line.startsWith("### "));
-  assert.deepEqual(headings, expected);
-});
-
-test("usage lists the scaffold command", () => {
+test("usage lists the supported commands and drops the removed scaffold command", () => {
   const { status, stderr } = runCli(ROOT, "bogus");
   assert.equal(status, 2);
-  assert.match(stderr, /\bscaffold\b/);
+  assert.match(stderr, /init\|validate\|validate-pr\|sweep/);
+  // "scaffold" survives only as the verb in init's description, never as a
+  // command line of its own.
+  assert.doesNotMatch(stderr, /^\s*scaffold\s/m);
 });

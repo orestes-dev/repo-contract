@@ -1,14 +1,13 @@
 // Deterministic, dependency-free validator. The issue body is parsed with plain
-// string ops (no regex) into `### <label>` sections. Headings inside fenced code
+// string ops (no regex) into `### <heading>` sections. Headings inside fenced code
 // blocks (``` or ~~~) are skipped, so a schema heading pasted into a repro can't
 // mis-split the body.
 
-import { RULES, CONVENTIONAL_COMMIT_TYPES } from "./rules.js";
+import { FIELDS, RULES, CONVENTIONAL_COMMIT_TYPES } from "./rules.js";
 import { NO_RESPONSE, LABEL, STATUS, OVERRIDE_HEADING } from "./constants.js";
-import { loadForm } from "./form.js";
 
 /**
- * @typedef {import('./form.js').Field} Field
+ * @typedef {import('./rules.js').Field} Field
  * @typedef {import('./rules.js').Rule} Rule
  */
 
@@ -27,10 +26,6 @@ import { loadForm } from "./form.js";
  * @property {Check[]} checks
  */
 
-// Structure from the Issue Form, joined to RULES on `id`. A broken form throws
-// here (fail loud) rather than degrading to "no checks".
-const FIELDS = loadForm();
-
 // Checklist prefixes matching GitHub's task-list rendering.
 const BULLETS = ["-", "*", "+"];
 const BOXES = ["[ ]", "[x]", "[X]"];
@@ -41,7 +36,7 @@ const CHECKLIST_PREFIXES = BULLETS.flatMap((bullet) =>
 // Only these headings delimit a section, so a `##`-looking line pasted inside a
 // field can't mis-split the body.
 const KNOWN_HEADINGS = new Set([
-  ...FIELDS.map((f) => f.label),
+  ...FIELDS.map((f) => f.heading),
   OVERRIDE_HEADING,
 ]);
 
@@ -204,7 +199,7 @@ export const check = (key, label, status, message) => ({
 });
 
 /**
- * Dropdown: membership in the form's options, plus RULES `blocking` values too
+ * Dropdown: membership in the field's options, plus RULES `blocking` values too
  * big to land as one issue. Both hard.
  * @param {Field} field
  * @param {Rule|undefined} rule
@@ -212,11 +207,11 @@ export const check = (key, label, status, message) => ({
  * @returns {Check}
  */
 function checkEnum(field, rule, value) {
-  const { id, label, options = [] } = field;
+  const { id, heading, options = [] } = field;
   if (!options.includes(value)) {
     return check(
       id,
-      label,
+      heading,
       STATUS.FAIL,
       `must be one of ${options.join(", ")}`,
     );
@@ -224,12 +219,12 @@ function checkEnum(field, rule, value) {
   if ((rule?.blocking ?? []).includes(value)) {
     return check(
       id,
-      label,
+      heading,
       STATUS.FAIL,
       `${value} is too big to land as one issue; split it into smaller issues`,
     );
   }
-  return check(id, label, STATUS.PASS, value);
+  return check(id, heading, STATUS.PASS, value);
 }
 
 /**
@@ -240,7 +235,7 @@ function checkEnum(field, rule, value) {
  * @returns {Check}
  */
 function checkChecklist(field, rule, value) {
-  const { id, label } = field;
+  const { id, heading } = field;
   const min = rule.minItems ?? 1;
   const items = countChecklistItems(value);
   if (items < min) {
@@ -248,11 +243,11 @@ function checkChecklist(field, rule, value) {
       min === 1
         ? "at least one checklist item"
         : `at least ${min} checklist items`;
-    return check(id, label, STATUS.FAIL, `must contain ${need} (\`- [ ]\`)`);
+    return check(id, heading, STATUS.FAIL, `must contain ${need} (\`- [ ]\`)`);
   }
   return check(
     id,
-    label,
+    heading,
     STATUS.PASS,
     `${items} checklist item${items === 1 ? "" : "s"}`,
   );
@@ -266,12 +261,12 @@ function checkChecklist(field, rule, value) {
  * @returns {Check}
  */
 function checkProse(field, rule, value) {
-  const { id, label } = field;
+  const { id, heading } = field;
   const min = rule?.minLength;
   if (min && value.length < min) {
     return check(
       id,
-      label,
+      heading,
       STATUS.FAIL,
       `too short (${value.length} chars, need at least ${min})`,
     );
@@ -280,12 +275,12 @@ function checkProse(field, rule, value) {
   if (max && value.length > max) {
     return check(
       id,
-      label,
+      heading,
       STATUS.WARN,
       `long (${value.length} chars, over ${max}); trim narrative bloat`,
     );
   }
-  return check(id, label, STATUS.PASS, `present (${value.length} chars)`);
+  return check(id, heading, STATUS.PASS, `present (${value.length} chars)`);
 }
 
 /**
@@ -297,13 +292,13 @@ function checkProse(field, rule, value) {
  * @returns {Check}
  */
 function checkField(sections, field, rule) {
-  const { id, label, required, type } = field;
-  const value = fieldValue(sections, label);
+  const { id, heading, required, type } = field;
+  const value = fieldValue(sections, heading);
   if (value === "") {
     if (required) {
       return check(
         id,
-        label,
+        heading,
         STATUS.FAIL,
         type === "dropdown" ? "missing" : "missing or empty",
       );
@@ -311,12 +306,12 @@ function checkField(sections, field, rule) {
     if (rule?.warnIfEmpty) {
       return check(
         id,
-        label,
+        heading,
         STATUS.WARN,
         "recommended; add it so implementers aren't left guessing",
       );
     }
-    return check(id, label, STATUS.PASS, "optional; not provided");
+    return check(id, heading, STATUS.PASS, "optional; not provided");
   }
   if (type === "dropdown") return checkEnum(field, rule, value);
   if (rule?.checklist) return checkChecklist(field, rule, value);
@@ -345,8 +340,8 @@ export function checkTitle(title) {
 }
 
 /**
- * Validate a body against the form-derived structure joined to RULES. Returns a
- * per-check scorecard, one line per field in form order. When `title` is given
+ * Validate a body against the `FIELDS` descriptor joined to RULES. Returns a
+ * per-check scorecard, one line per field in descriptor order. When `title` is given
  * (CI always passes it; the CLI only when `--title` is supplied), a title check
  * is prepended so the scorecard leads with it.
  * @param {string} body

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 
 import {
   validate,
@@ -13,16 +14,14 @@ import {
   warnings,
   checkTitle,
 } from "./validator.js";
-import { RULES } from "./rules.js";
+import { FIELDS, RULES } from "./rules.js";
 import { LABEL, STATUS } from "./constants.js";
-import { loadForm } from "./form.js";
 import { goodBody as good } from "./fixtures.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
 
-// The template-derived structure the validator runs against.
-const FIELDS = loadForm();
+// The code-owned structure the validator runs against.
 const fieldById = (id) => FIELDS.find((f) => f.id === id);
 
 // The check for a given field key, so assertions read against one scorecard line.
@@ -38,15 +37,15 @@ test("a complete, well-formed issue passes every check", () => {
 
 test("the scorecard always carries one line per field, pass included", () => {
   const result = validate(good);
-  // One check per input field, in form order, keyed by field id and labelled
-  // with the field's heading, both derived from the Issue Form.
+  // One check per field, in descriptor order, keyed by field id and labelled
+  // with the field's heading, both from the `FIELDS` descriptor in rules.js.
   assert.deepEqual(
     result.checks.map((c) => c.key),
     FIELDS.map((f) => f.id),
   );
   assert.deepEqual(
     result.checks.map((c) => c.label),
-    FIELDS.map((f) => f.label),
+    FIELDS.map((f) => f.heading),
   );
 });
 
@@ -331,11 +330,41 @@ test("a bad title fails the whole issue even when the body is clean", () => {
   assert.equal(labelFor(result), LABEL.FAILING);
 });
 
-// RULES and the input fields (Issue Form) must be in bijection:
-// every rule maps to a real field, and every field has a rule. An orphaned rule
-// (typo'd id, deleted field) or an unruled field fails CI here.
-test("RULES keys are exactly the Issue Form input-field ids", () => {
+// RULES and the FIELDS descriptor must be in bijection: every rule maps to a
+// real field, and every field has a rule. An orphaned rule (typo'd id, deleted
+// field) or an unruled field fails CI here.
+test("RULES keys are exactly the FIELDS ids", () => {
   assert.deepEqual(Object.keys(RULES).sort(), FIELDS.map((f) => f.id).sort());
+});
+
+// --- drift: task.yml is a rendering of the FIELDS descriptor ---
+
+// Structure lives in code (`FIELDS`); `.github/ISSUE_TEMPLATE/task.yml` is the
+// GitHub-UI rendering of it, read only by GitHub and this test, never at
+// runtime. This pins the YAML's input fields (heading, order, required, options)
+// to the descriptor so the two cannot drift apart. Its `description` prose is
+// deliberately richer than the code and is not compared.
+const INPUT_TYPES = new Set(["input", "textarea", "dropdown"]);
+
+test("task.yml headings, order, required, and options match FIELDS", () => {
+  const doc = parse(read(".github/ISSUE_TEMPLATE/task.yml"));
+  const rendered = doc.body
+    .filter((el) => el && INPUT_TYPES.has(el.type))
+    .map((el) => ({
+      id: el.id,
+      heading: el.attributes?.label,
+      type: el.type,
+      required: el.validations?.required === true,
+      options: el.type === "dropdown" ? el.attributes?.options : undefined,
+    }));
+  const expected = FIELDS.map((f) => ({
+    id: f.id,
+    heading: f.heading,
+    type: f.type,
+    required: f.required,
+    options: f.options,
+  }));
+  assert.deepEqual(rendered, expected);
 });
 
 // The README restates the rules as the human-readable bar. That is accepted

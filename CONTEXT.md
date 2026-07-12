@@ -5,21 +5,25 @@ A deterministic gate that scores GitHub **issues** and **pull requests** against
 ## Language
 
 **Intent**:
-The single source of truth for a gate: which **fields** to present and at what severity. Format-independent. A given intent is **rendered** into one or more concrete templates (the GitHub-format one, the agent-facing one), which differ in format but express the same intent; drift between renderings is tested and prevented. "The Form owns structure" is shorthand for "the Form is the intent's GitHub rendering."
+The single source of truth for a gate: which **fields** to present, in what order, and at what severity. It is concrete code, read at runtime: the ordered field descriptor in `rules.js` (issues) and `PR_SECTIONS` (PRs). A given intent is **rendered** into concrete artifacts that differ in format but express the same structure: the GitHub-native rendering (the Issue Form YAML, the PR template Markdown) and the **Author guide** (the LLM-facing Markdown). No rendering is read at runtime; each is drift-tested against the intent so they cannot diverge in structure.
 
 **Issue Form**:
-The GitHub YAML template (`.github/ISSUE_TEMPLATE/task.yml`) an author fills in to open an issue. The GitHub rendering of the issue gate's **Intent**, read at runtime as the source of issue **structure**.
+The GitHub YAML template (`.github/ISSUE_TEMPLATE/task.yml`) GitHub's issue-form UI renders for an author opening a new issue. A rendering of the issue gate's **Intent**, not its source: read only by the GitHub UI and the drift tests, never at runtime. Its structure (headings, order, required, options) is drift-tested against `rules.js`.
 _Avoid_: Template (ambiguous with workflow template), schema.
 
 **PR Form**:
-The Markdown template (`.github/PULL_REQUEST_TEMPLATE.md`) a PR author fills in, carrying each section's heading plus inline voice guidance. Unlike the Issue Form, GitHub does not enforce it, so the PR gate enforces the sections itself. Because it is Markdown, it is both the GitHub rendering and the agent-facing rendering of the PR gate's Intent (one file, no agent-versus-UI drift). Its required sections are Summary, Verification, and Divergence.
+The Markdown rendering of the PR gate's **Intent** (`PR_SECTIONS`). GitHub renders `.github/PULL_REQUEST_TEMPLATE.md` as the PR body; the byte-identical `.template.pr.md` at the repo root is its **Author guide**. Because both are the same bytes, PR authoring guidance lives in HTML comments (hidden in the posted body, read by author and LLM in the raw file). GitHub does not enforce the sections, so the PR gate enforces them itself. Its required sections are Summary, Verification, and Divergence.
 _Avoid_: Template.
 
+**Author guide**:
+The LLM-facing Markdown an author (human or agent) follows to write a well-formed body, carrying each section's heading plus examples, voice notes, and guidance code cannot express. `.template.issue.md` and `.template.pr.md` at the repo root, both ignored by GitHub (non-reserved names). A rendering of the **Intent**, drift-tested on headings and order only; its prose is deliberately richer than the GitHub rendering and is not drift-checked. `init` ships it into a consumer and the **Suggested rule** points an agent at it.
+_Avoid_: Template, LLM template, schema.
+
 **Structure**:
-The set of **fields** an object must contain and their shape: each field's id, heading, whether it is required, and any enumerated options. Owned by the gate's **Intent** and read from its GitHub rendering (Issue Form / PR Form) at runtime.
+The set of **fields** an object must contain and their shape: each field's id, heading, order, type, whether it is required, and any enumerated options. Owned by the gate's **Intent** (`rules.js` / `PR_SECTIONS`) and read from there at runtime. The renderings restate it and are drift-tested against it.
 
 **Field**:
-One input in the Issue Form, identified by a stable `id` and rendered in the submitted body as a `### <heading>` **section**. The fields are Context, Acceptance Criteria, Out of Scope, Decisions, Affected files / entry points, Depends on, and Size. Context, Acceptance Criteria, Out of Scope, and Size are required; Decisions and Affected files are optional but warn when empty; Depends on is purely optional.
+One input the issue **Intent** (`rules.js`) declares, identified by a stable `id` and rendered in the submitted body as a `### <heading>` **section**. The fields are Context, Acceptance Criteria, Out of Scope, Decisions, Affected files / entry points, Depends on, and Size. Context, Acceptance Criteria, Out of Scope, and Size are required; Decisions and Affected files are optional but warn when empty; Depends on is purely optional.
 _Avoid_: Question, item.
 
 **Title**:
@@ -29,7 +33,7 @@ The issue's one-line summary, validated (not a field, since the form doesn't own
 A `### <heading>` block in a submitted issue body. GitHub renders each field's heading as the section heading; the validator parses sections back out to check them. A section is the rendered form of a field.
 
 **Rule**:
-A constraint applied to a field that the Issue Form cannot express: minimum/maximum length, checklist-item requirement, warn-if-empty on an optional field, or which sizes are too large to land. Owned by `rules.js`, keyed by field `id`, and joined to the structure at runtime.
+The constraint layer on a field: minimum/maximum length, checklist-item requirement, warn-if-empty on an optional field, or which sizes are too large to land. `rules.js` owns both the field descriptor (id, heading, order, type, required, options) and these constraints; a Rule is the constraint half.
 _Avoid_: Validation, constraint, config.
 
 **Check**:
@@ -60,7 +64,7 @@ _Avoid_: Deviation, scope change.
 Whether a PR is cleared to merge by the gate. Distinct from **Readiness** (an issue property): a PR is ready when it has no error (its required sections are present, its title is conventional, and **every** same-repo Linked issue is itself ready), or a human waived the block with `override:pr-quality` plus a rationale, or a bot authored it. Expressed as a passing (green) status **Check**, the merge-blocking signal; the `pr-quality:*` label and scorecard are explanatory.
 
 **Suggested rule**:
-The agent-guidance snippet `init` prints to stdout (it does not write it to any file) for the operator to paste into their own agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor rules). It tells an agent which template to fill and to pre-flight validate before opening the issue or PR. Kept out of the repo so `init` never clobbers a file it does not own.
+The agent-guidance snippet `init` prints to stdout (it does not write it to any file) for the operator to paste into their own agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor rules). It tells an agent to follow the **Author guide** (`.template.issue.md` / `.template.pr.md`) and to pre-flight validate before opening the issue or PR. Kept out of the repo so `init` never clobbers a file it does not own.
 
 **Sweep**:
 A local, on-demand backfill that applies quality labels and scorecards across a repo's existing open issues, using the operator's own `gh` session rather than CI credentials.
@@ -69,20 +73,24 @@ A local, on-demand backfill that applies quality labels and scorecards across a 
 Running the validator against a drafted issue body locally (`validate <file>`) before `gh issue create`, to catch hard errors before the issue exists.
 
 **Drift test**:
-A test asserting that a restated copy of a fact still matches its single source: the README threshold numbers against the rules, and the two workflow files against each other's shared parts. Duplication that is kept on purpose is made safe by a drift test rather than eliminated.
+A test asserting that a restated copy of a fact still matches its single source. The standing cases: each rendering's structure against its **Intent** (the Issue Form and the Author guides against `rules.js`, the PR template against `PR_SECTIONS`), the README threshold numbers against the rules, this repo's dogfood copies against the canonical `templates/` bundle, and the two workflow files against each other's shared parts. Renderings are checked as strictly as their format allows: the YAML on headings, order, required, and options; the Markdown guides on headings and order only, since their prose is free. Duplication kept on purpose is made safe by a drift test rather than eliminated.
 
 **Accepted duplication**:
-A restatement deliberately left in place because collapsing it costs more than it saves, guarded by a drift test. The two workflow files (consumer `@main` vs dogfood `./`) are the standing example.
+A restatement deliberately left in place because collapsing it costs more than it saves, guarded by a drift test. Standing examples: the two workflow files (consumer `@main` vs dogfood `./`), the byte-identical PR pair (`.template.pr.md` == `.github/PULL_REQUEST_TEMPLATE.md`), and this repo's dogfood copies against the `templates/` bundle.
 
 ## Example dialogue
 
-**Dev**: If the Issue Form owns the structure, where does "Context must be at least 30 characters" live?
+**Dev**: Where does the issue structure live, and where does "Context must be at least 30 characters" live?
 
-**Domain expert**: That's a rule, not structure. The form only says Context is a required field; the 30-character floor is a rule in `rules.js`, keyed to the Context field's id. We join the two at runtime.
+**Domain expert**: Both in `rules.js`. It owns the ordered field descriptor (id, heading, type, required, options) and the constraints on each field, including Context's 30-character floor. The validator reads `rules.js` at runtime; nothing is parsed from the YAML.
 
-**Dev**: And if someone renames the Context field's heading in the form?
+**Dev**: Then what is `task.yml` for?
 
-**Domain expert**: The section heading follows automatically, because the validator reads headings from the form. The rule still matches because it's keyed by id, not heading. A test asserts every rule still maps to a real field, so an orphaned rule or an unruled field fails CI.
+**Domain expert**: It is the GitHub issue-form UI rendering, read only by GitHub and the drift tests. If its headings, order, required, or options drift from `rules.js`, a test fails. Same for the Author guides' headings.
+
+**Dev**: And if someone renames the Context heading?
+
+**Domain expert**: Change it in `rules.js`; the constraint stays attached because it's keyed by the field's stable `id`, not its heading. The drift tests then force the same rename in the YAML and the Author guide, or CI goes red.
 
 **Dev**: The README also lists "30 characters." Isn't that duplication?
 

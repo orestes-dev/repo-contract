@@ -25,10 +25,11 @@ section and [`CONTEXT.md`](CONTEXT.md).
 
 ## What it checks
 
-The fields and their headings are owned by the Issue Form
-([`.github/ISSUE_TEMPLATE/task.yml`](.github/ISSUE_TEMPLATE/task.yml)) and read
-from it at runtime; the table below is the human-readable bar for the rules
-layered on top.
+The fields and their headings are owned in code by the ordered descriptor in
+[`src/rules.js`](src/rules.js), read at runtime; the Issue Form
+([`.github/ISSUE_TEMPLATE/task.yml`](.github/ISSUE_TEMPLATE/task.yml)) is a
+drift-checked rendering of it for GitHub's new-issue UI, never read at runtime.
+The table below is the human-readable bar for the rules layered on top.
 
 | Field                             | Rule                                          | Severity                 |
 | --------------------------------- | --------------------------------------------- | ------------------------ |
@@ -44,7 +45,7 @@ layered on top.
 | **Size**                          | not `L` / `XL` (too big to land as one issue) | error                    |
 
 Title is issue metadata, not a body section, so it leads the scorecard rather
-than being derived from the form. Decisions and Affected files are optional but
+than being derived from the field descriptor. Decisions and Affected files are optional but
 recommended: empty raises a non-blocking warning, since both sharpen an issue
 for whoever (human or agent) implements it.
 
@@ -109,7 +110,8 @@ npx github:orestes-dev/quality-gate init
 
 Run from the repo root. This drops four files, which together are the opt-in:
 
-- `.github/ISSUE_TEMPLATE/task.yml`: the Issue Form (canonical schema).
+- `.github/ISSUE_TEMPLATE/task.yml`: the Issue Form (GitHub-UI rendering of the
+  `src/rules.js` structure, drift-checked against it).
 - `.github/workflows/issue-quality.yml`: a thin workflow calling the shared
   Action at `@main` for the issue gate.
 - `.github/PULL_REQUEST_TEMPLATE.md`: the PR Form (required sections).
@@ -180,7 +182,7 @@ npx github:orestes-dev/quality-gate validate path/to/issue-body.md \
   --title "feat(search): debounce the query input"
 ```
 
-The file must use the same `### ` headings the Issue Form renders (Decisions,
+The file must use the same `### ` headings the gate requires (Decisions,
 Affected files, and Depends on are optional):
 
 ```md
@@ -211,18 +213,6 @@ S
 
 Exits non-zero on errors. One validator backs both CI and pre-flight. Without
 `--title` the title check is skipped (a body file carries no title).
-
-To get that skeleton without hand-writing it, run `scaffold`. It prints a blank
-body with one `### ` heading per Issue Form field, in form order, for an agent to
-fill and then pre-flight validate:
-
-```sh
-npx github:orestes-dev/quality-gate scaffold > issue-body.md
-```
-
-The headings are derived from the form at runtime (the same read the validator
-uses), so the skeleton tracks the form with no committed duplicate. Issue-only:
-a PR agent fills the PR Form Markdown directly.
 
 ## Flow
 
@@ -288,13 +278,14 @@ to resolve `closingIssuesReferences`). Exits non-zero on hard errors.
   so rule changes propagate on the next run with no per-repo bump, accepting
   that a bad change affects every opted-in repo at once.
 - **Fixed schema.** No per-repo config or inputs, so the labels mean the same
-  thing in every repo. The gate reads structure from its own checkout, not your
-  copy of the form, so the scaffolded `task.yml` is not meant to be edited:
+  thing in every repo. The gate reads structure from its own `src/rules.js`, not
+  your copy of the form, so the scaffolded `task.yml` is not meant to be edited:
   renaming a heading or changing the size options makes submitted issues stop
   matching, and every one is marked failing.
 
 ## Architecture
 
-Structure is read from the Issue Form at runtime; rules the form can't express
-live in `src/rules.js`. [`CONTEXT.md`](CONTEXT.md) is the domain glossary:
+Structure and rules both live in `src/rules.js` (the ordered field descriptor
+plus the constraints), read at runtime; the Issue Form YAML is a drift-checked
+rendering of that structure. [`CONTEXT.md`](CONTEXT.md) is the domain glossary:
 Issue Form, structure, field, section, rule, check, scorecard, override.

@@ -1,9 +1,11 @@
-# The fields below define the issue STRUCTURE, read at runtime by src/form.js.
-# The RULES enforced on top (min/max length, checklist count, blocking sizes)
-# live in src/rules.js, keyed by these `id`s. Add, remove, or rename a field and
-# you must update RULES to match — a drift test (src/validator.test.js) enforces
-# the 1:1 mapping. Thresholds quoted in the descriptions below mirror the numbers
-# in src/rules.js; keep the two in sync.
+# This file is the GitHub-UI rendering of the issue STRUCTURE, not its source:
+# the ordered field descriptor (FIELDS) and the RULES enforced on top (min/max
+# length, checklist count, blocking sizes) both live in src/rules.js, read at
+# runtime. GitHub reads this YAML for the new-issue form; a drift test
+# (src/validator.test.js) pins its headings, order, required, and options to
+# FIELDS. Add, remove, or rename a field in src/rules.js and mirror it here, or
+# CI goes red. Thresholds quoted in the descriptions below mirror the numbers in
+# src/rules.js; keep the two in sync.
 name: Task
 description: A well-scoped, actionable task.
 body:

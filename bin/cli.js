@@ -7,7 +7,6 @@ import { resolve } from "node:path";
 import { validate, failures } from "../src/validator.js";
 import { validatePr } from "../src/pr-validator.js";
 import { renderCli, PR_PRESENTATION } from "../src/report.js";
-import { loadForm } from "../src/form.js";
 import { init } from "../src/commands/init.js";
 import { sweep } from "../src/commands/sweep.js";
 
@@ -60,20 +59,6 @@ function cmdValidatePr(args) {
 }
 
 /**
- * Print a blank issue body skeleton: one `### <heading>` section per Issue Form
- * field, in form order, for an agent to fill before pre-flight validation. The
- * headings are derived from the form at runtime, so the skeleton tracks the form
- * without a committed duplicate. Stdout only, like `validate`.
- * @returns {void}
- */
-function cmdScaffold() {
-  const skeleton = loadForm()
-    .map((field) => `### ${field.label}`)
-    .join("\n\n");
-  console.log(skeleton);
-}
-
-/**
  * Dispatch the sub-command named in argv.
  * @returns {Promise<void>}
  */
@@ -86,18 +71,15 @@ async function main() {
       return cmdValidate(rest);
     case "validate-pr":
       return cmdValidatePr(rest);
-    case "scaffold":
-      return cmdScaffold();
     case "sweep":
       return sweep();
     default:
       console.error(
-        "usage: quality-gate <init|validate|validate-pr|scaffold|sweep>\n" +
+        "usage: quality-gate <init|validate|validate-pr|sweep>\n" +
           "  init [--force]   scaffold the Issue Form + workflow into this repo\n" +
           "                   (fails on drifted files; --force upgrades in place)\n" +
           "  validate <file> [--title <title>]     validate an issue body file (exit 1 on hard errors)\n" +
           "  validate-pr <file> [--title <title>]  validate a PR body file (exit 1 on hard errors)\n" +
-          "  scaffold         print a blank issue body skeleton for an agent to fill\n" +
           "  sweep            backfill labels + scorecards on a repo's open issues",
       );
       process.exit(2);
