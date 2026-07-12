@@ -1,8 +1,7 @@
 // Gate core: validates an issue body, reconciles the mutually-exclusive quality
 // labels, and keeps a single bot comment in sync. Every write is diff-based, so
 // a re-run in the correct state writes nothing and the label triggers do not
-// loop. The process entry that feeds this from the CI environment lives in
-// `commands/action.js`.
+// loop.
 
 import {
   validate,

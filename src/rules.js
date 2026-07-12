@@ -1,7 +1,7 @@
 // The RULES the gate enforces: the tuning surface. STRUCTURE lives in the Issue
-// Form and is derived by `form.js`; this module owns only the constraints the
-// form can't express, keyed by field `id`, plus the title format the gate
-// requires. Edit here to change the bar.
+// Form; this module owns only the constraints the form can't express, keyed by
+// field `id`, plus the title format the gate requires. Edit here to change the
+// bar.
 
 /**
  * A constraint the Issue Form can't express, keyed by field `id`.

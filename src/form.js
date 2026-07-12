@@ -1,6 +1,6 @@
 // Derive the issue STRUCTURE from the Issue Form at runtime: each field's id,
-// label, required, type, options. `yaml` is used only here; the issue body is
-// still parsed with plain string ops in `validator.js`.
+// label, required, type, options. `yaml` is used only here; the issue body
+// itself is still parsed with plain string ops.
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

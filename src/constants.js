@@ -1,6 +1,6 @@
 // The gate's internal constants: labels, statuses, and the markers/headings the
-// action keys off. The enforced RULES and title format are the tuning surface
-// and live in `rules.js`; STRUCTURE lives in the Issue Form via `form.js`.
+// action keys off. The enforced RULES and title format are a separate tuning
+// surface; STRUCTURE lives in the Issue Form.
 
 // GitHub renders an empty optional field as this literal. Treat it as absent.
 export const NO_RESPONSE = "_No response_";

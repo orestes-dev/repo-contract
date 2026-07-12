@@ -67,7 +67,7 @@ export class GitHub {
   }
 
   /**
-   * Fetch fresh; the webhook payload can't be trusted (see action.js).
+   * Fetch fresh; the webhook payload can't be trusted.
    * @param {number} issueNumber
    * @returns {Promise<object>} The issue resource.
    */

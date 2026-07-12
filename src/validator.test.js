@@ -300,7 +300,7 @@ test("a bad title fails the whole issue even when the body is clean", () => {
   assert.equal(labelFor(result), LABEL.FAILING);
 });
 
-// RULES (rules.js) and the input fields (Issue Form) must be in bijection:
+// RULES and the input fields (Issue Form) must be in bijection:
 // every rule maps to a real field, and every field has a rule. An orphaned rule
 // (typo'd id, deleted field) or an unruled field fails CI here.
 test("RULES keys are exactly the Issue Form input-field ids", () => {
