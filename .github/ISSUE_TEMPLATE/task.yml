@@ -1,20 +1,24 @@
 name: Task
 description: A well-scoped, actionable task.
-title: "[Task]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Fill in every field. A structural quality gate runs automatically and
-        will flag issues that are missing context, acceptance criteria, or that
-        are too large to land as one issue.
+        Fill in the required fields; the optional ones sharpen an issue for
+        whoever (human or agent) picks it up. A structural quality gate runs
+        automatically and will flag issues that are missing context, acceptance
+        criteria, or that are too large to land as one issue.
+
+        **Title**: use Conventional Commits — `type(scope): summary`
+        (e.g. `feat(search): debounce the query input`).
   - type: textarea
     id: context
     attributes:
       label: Context
       description: >-
         What needs to happen and why. Enough for someone with no prior context
-        to understand the goal.
+        to understand the goal. Include sample payloads, schemas, or
+        function/API signatures where an implementer would otherwise invent them.
       placeholder: >-
         The X page loads all records on mount, which is slow for large accounts.
         We want it to paginate so the initial load stays fast.
@@ -26,7 +30,9 @@ body:
       label: Acceptance Criteria
       description: >-
         A markdown checklist of verifiable outcomes. At least one item. Each
-        item should be objectively checkable.
+        item should be objectively checkable. Include verification (tests, docs)
+        and any non-functional requirements (performance, security,
+        accessibility, backward-compatibility) as checkable items where relevant.
       value: |
         - [ ]
     validations:
@@ -43,6 +49,35 @@ body:
         - Changing the underlying data model
     validations:
       required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions
+      description: >-
+        Settled choices from planning or a grill, each with its rationale.
+        Constraints the implementer must respect, not a proposed approach. One
+        decision per line. Leave blank if there are none.
+      placeholder: >-
+        - Debounce, not throttle: trailing-edge fetch matches user intent.
+        - Reuse the existing cache layer rather than add a new one.
+  - type: textarea
+    id: affected-files
+    attributes:
+      label: Affected files / entry points
+      description: >-
+        Files, modules, or symbols the work will likely touch, so whoever
+        implements it doesn't have to search for them (e.g. `src/schema.js: RULES`).
+      placeholder: >-
+        - src/search.js: onQueryChange()
+        - src/api/records.js
+  - type: textarea
+    id: depends-on
+    attributes:
+      label: Depends on
+      description: >-
+        Prerequisite issues or required merge order. Leave blank if none.
+      placeholder: >-
+        - #123 must merge first (schema refactor)
   - type: dropdown
     id: size
     attributes:

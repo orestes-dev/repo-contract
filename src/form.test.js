@@ -118,6 +118,14 @@ test("loadForm parses this action's own canonical Issue Form", () => {
   const fields = loadForm();
   assert.deepEqual(
     fields.map((f) => f.id),
-    ["context", "acceptance-criteria", "out-of-scope", "size"],
+    [
+      "context",
+      "acceptance-criteria",
+      "out-of-scope",
+      "decisions",
+      "affected-files",
+      "depends-on",
+      "size",
+    ],
   );
 });

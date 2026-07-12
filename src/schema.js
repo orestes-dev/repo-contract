@@ -10,6 +10,8 @@
  * @property {boolean} [checklist] - Field must be a markdown checklist.
  * @property {number} [minItems] - Minimum non-empty checklist items.
  * @property {string[]} [blocking] - Dropdown options too big to land as one issue.
+ * @property {boolean} [warnIfEmpty] - Optional field whose absence is a warning,
+ *   not a silent pass: recommended context an implementer shouldn't have to guess.
  */
 
 // Every number is restated in the README and guarded by a drift test.
@@ -18,8 +20,27 @@ export const RULES = {
   context: { minLength: 30, maxLength: 1500 },
   "acceptance-criteria": { checklist: true, minItems: 1 },
   "out-of-scope": { minLength: 10 },
+  decisions: { warnIfEmpty: true },
+  "affected-files": { warnIfEmpty: true },
+  "depends-on": {},
   size: { blocking: ["L", "XL"] },
 };
+
+// Conventional Commits types the issue title must open with. The gate enforces
+// `type(scope): summary` so a title maps cleanly onto the eventual branch/commit.
+export const CONVENTIONAL_COMMIT_TYPES = [
+  "feat",
+  "fix",
+  "perf",
+  "refactor",
+  "test",
+  "build",
+  "chore",
+  "docs",
+  "style",
+  "ci",
+  "revert",
+];
 
 // GitHub renders an empty optional field as this literal. Treat it as absent.
 export const NO_RESPONSE = "_No response_";

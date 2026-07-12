@@ -117,7 +117,7 @@ export async function run({ gh, event }) {
     return `issue #${issue.number}: overridden`;
   }
 
-  const result = validate(body);
+  const result = validate(body, issue.title);
 
   // Override signalled but incomplete: nudge the author, as a warning line.
   if (currentLabels.includes(OVERRIDE_LABEL) && !hasOverrideRationale(body)) {

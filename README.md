@@ -1,13 +1,13 @@
 # issue-quality-gate
 
 A deterministic quality gate for GitHub issues, so they land well-scoped and
-actionable. Structural checks only: presence, length, checklist count, size
-enum.
+actionable. Structural checks only: title format, presence, length, checklist
+count, size enum.
 
 ## Features
 
-- **Deterministic checks**: presence, min/max length, acceptance-criteria
-  checklist count, size enum. Same rules every time.
+- **Deterministic checks**: Conventional Commits title, presence, min/max
+  length, acceptance-criteria checklist count, size enum. Same rules every time.
 - **Scorecard comment**: every run upserts one **Issue Quality Checklist** with
   a ✅ / ⚠️ / ❌ line per check, so a clean issue gets confirmation, not silence.
 - **Three mutually-exclusive labels**: `issue-quality:failing` (hard block),
@@ -26,14 +26,23 @@ The fields and their headings are owned by the Issue Form
 from it at runtime; the table below is the human-readable bar for the rules
 layered on top.
 
-| Field                   | Rule                                          | Severity                 |
-| ----------------------- | --------------------------------------------- | ------------------------ |
-| **Context**             | present, ≥ 30 chars                           | error                    |
-| **Context**             | ≤ 1500 chars                                  | warning (fluff detector) |
-| **Acceptance Criteria** | ≥ 1 non-empty checklist item (`- [ ]`)        | error                    |
-| **Out of Scope**        | present, ≥ 10 chars                           | error                    |
-| **Size**                | one of `XS / S / M / L / XL`                  | error                    |
-| **Size**                | not `L` / `XL` (too big to land as one issue) | error                    |
+| Field                             | Rule                                          | Severity                 |
+| --------------------------------- | --------------------------------------------- | ------------------------ |
+| **Title**                         | Conventional Commits `type(scope): summary`   | error                    |
+| **Context**                       | present, ≥ 30 chars                           | error                    |
+| **Context**                       | ≤ 1500 chars                                  | warning (fluff detector) |
+| **Acceptance Criteria**           | ≥ 1 non-empty checklist item (`- [ ]`)        | error                    |
+| **Out of Scope**                  | present, ≥ 10 chars                           | error                    |
+| **Decisions**                     | present (settled choices + rationale)         | warning if empty         |
+| **Affected files / entry points** | present (files/symbols the work touches)      | warning if empty         |
+| **Depends on**                    | optional (prerequisite issues / merge order)  | none                     |
+| **Size**                          | one of `XS / S / M / L / XL`                  | error                    |
+| **Size**                          | not `L` / `XL` (too big to land as one issue) | error                    |
+
+Title is issue metadata, not a body section, so it leads the scorecard rather
+than being derived from the form. Decisions and Affected files are optional but
+recommended: empty raises a non-blocking warning, since both sharpen an issue
+for whoever (human or agent) implements it.
 
 The worst per-check status sets one mutually-exclusive label:
 
@@ -48,9 +57,13 @@ Every run upserts the scorecard comment (removed only by a completed override):
 ```md
 ### Issue Quality Checklist
 
+- ✅ **Title**: feat(search): debounce the query input
 - ✅ **Context**: present (118 chars)
 - ✅ **Acceptance Criteria**: 2 checklist items
 - ❌ **Out of Scope**: missing or empty
+- ⚠️ **Decisions**: recommended; add it so implementers aren't left guessing
+- ✅ **Affected files / entry points**: present (28 chars)
+- ✅ **Depends on**: optional; not provided
 - ✅ **Size**: S
 ```
 
@@ -116,13 +129,16 @@ labels in the repo; there is no separate label-setup step.
 
 ## Pre-flight validation
 
-Before `gh issue create`, run the same validator on a draft file:
+Before `gh issue create`, run the same validator on a draft file. Pass
+`--title` to also check the title against the Conventional Commits format:
 
 ```sh
-npx github:orestes-dev/issue-quality-gate validate path/to/issue-body.md
+npx github:orestes-dev/issue-quality-gate validate path/to/issue-body.md \
+  --title "feat(search): debounce the query input"
 ```
 
-The file must use the same `### ` headings the Issue Form renders:
+The file must use the same `### ` headings the Issue Form renders (Decisions,
+Affected files, and Depends on are optional):
 
 ```md
 ### Context
@@ -137,12 +153,21 @@ The file must use the same `### ` headings the Issue Form renders:
 
 - <explicit non-goal>
 
+### Decisions
+
+- <settled choice: rationale>
+
+### Affected files / entry points
+
+- <path/to/file: symbol>
+
 ### Size
 
 S
 ```
 
-Exits non-zero on errors. One validator backs both CI and pre-flight.
+Exits non-zero on errors. One validator backs both CI and pre-flight. Without
+`--title` the title check is skipped (a body file carries no title).
 
 ## Flow
 
@@ -151,7 +176,7 @@ flowchart TD
     A[issue opened / edited / labeled / unlabeled] --> B[fetch issue fresh from API]
     B --> C{override label + rationale?}
     C -->|yes| D[strip quality labels + comment] --> Z[done]
-    C -->|no| E[validate: presence, length, AC checklist, size]
+    C -->|no| E[validate: title format, presence, length, AC checklist, size]
     E --> F[label by worst status + upsert scorecard comment] --> Z
 ```
 

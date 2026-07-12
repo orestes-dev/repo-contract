@@ -11,6 +11,7 @@ import {
   hasOverrideRationale,
   failures,
   warnings,
+  checkTitle,
 } from "./validator.js";
 import { LABEL, STATUS, RULES } from "./schema.js";
 import { loadForm } from "./form.js";
@@ -237,6 +238,65 @@ test("a whitespace-only checklist item does not count", () => {
     checkFor(validate(body), "acceptance-criteria").status,
     STATUS.FAIL,
   );
+});
+
+test("a missing warn-if-empty field is a non-blocking warning", () => {
+  const body = good.replace(
+    "### Decisions\n\n- Debounce, not throttle: trailing-edge fetch matches user intent.\n\n",
+    "",
+  );
+  const result = validate(body);
+  assert.equal(checkFor(result, "decisions").status, STATUS.WARN);
+  assert.deepEqual(failures(result.checks), []);
+  assert.equal(labelFor(result), LABEL.WARNING);
+});
+
+test("a present warn-if-empty field passes", () => {
+  assert.equal(checkFor(validate(good), "decisions").status, STATUS.PASS);
+  assert.equal(checkFor(validate(good), "affected-files").status, STATUS.PASS);
+});
+
+test("a plain optional field is silent when absent", () => {
+  // `good` never sets Depends on, so its absence must pass, not warn.
+  const dependsOn = checkFor(validate(good), "depends-on");
+  assert.equal(dependsOn.status, STATUS.PASS);
+  assert.match(dependsOn.message, /optional/);
+});
+
+test("checkTitle passes a Conventional Commits title", () => {
+  for (const title of [
+    "feat: add pagination",
+    "fix(search): debounce input",
+    "refactor(api)!: drop the legacy field",
+  ]) {
+    assert.equal(checkTitle(title).status, STATUS.PASS, title);
+  }
+});
+
+test("checkTitle fails a non-conventional or empty title", () => {
+  for (const title of [
+    "add pagination",
+    "Feat: capitalised",
+    "wip: nope",
+    "",
+  ]) {
+    assert.equal(checkTitle(title).status, STATUS.FAIL, JSON.stringify(title));
+  }
+});
+
+test("validate prepends a title check only when a title is given", () => {
+  const withTitle = validate(good, "feat: add pagination");
+  assert.equal(withTitle.checks[0].key, "title");
+  assert.equal(withTitle.checks[0].status, STATUS.PASS);
+
+  const withoutTitle = validate(good);
+  assert.ok(!withoutTitle.checks.some((c) => c.key === "title"));
+});
+
+test("a bad title fails the whole issue even when the body is clean", () => {
+  const result = validate(good, "no type prefix here");
+  assert.equal(checkFor(result, "title").status, STATUS.FAIL);
+  assert.equal(labelFor(result), LABEL.FAILING);
 });
 
 // RULES (schema.js) and the input fields (Issue Form) must be in bijection:
