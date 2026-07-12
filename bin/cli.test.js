@@ -62,6 +62,7 @@ test("init warns and still scaffolds when cwd is not a git root", () => {
     assert.equal(status, 0);
     assert.match(stderr, /no \.git in the current directory/);
     assert.ok(existsSync(join(dir, ".github", "ISSUE_TEMPLATE", "task.yml")));
+    assert.ok(existsSync(join(dir, ".template.issue.md")));
     assert.ok(
       existsSync(join(dir, ".github", "workflows", "issue-quality.yml")),
     );
@@ -75,7 +76,7 @@ test("init prints the Suggested rule naming both Forms and validate-pr, writing 
     const { status, stdout } = runInit(dir);
     assert.equal(status, 0);
     assert.match(stdout, /Suggested rule/);
-    assert.match(stdout, /ISSUE_TEMPLATE\/task\.yml/);
+    assert.match(stdout, /\.template\.issue\.md/);
     assert.match(stdout, /PULL_REQUEST_TEMPLATE\.md/);
     assert.match(stdout, /\bvalidate\b/);
     assert.match(stdout, /validate-pr/);

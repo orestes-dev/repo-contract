@@ -382,6 +382,37 @@ test("the dogfood .github Issue Form is byte-identical to the templates bundle",
   );
 });
 
+// --- drift: the issue Author guide is a rendering of the FIELDS descriptor ---
+
+// The issue Author guide is the LLM-facing Markdown rendering of the same
+// structure: one `### <heading>` section per field, in descriptor order. Only
+// its headings and order are pinned to FIELDS; its prose is deliberately richer
+// than the code and the YAML, and is not compared. Match on the `### <heading>`
+// at a line start so a heading name mentioned in prose can't satisfy the check.
+test("the issue Author guide's section headings and order match FIELDS", () => {
+  const guide = read("templates/markdown/issue.md");
+  const positions = FIELDS.map((f) => guide.indexOf(`\n### ${f.heading}\n`));
+  positions.forEach((pos, i) => {
+    assert.ok(
+      pos >= 0,
+      `the guide is missing the "### ${FIELDS[i].heading}" section`,
+    );
+    if (i > 0) {
+      assert.ok(
+        pos > positions[i - 1],
+        `"### ${FIELDS[i].heading}" is out of order in the guide`,
+      );
+    }
+  });
+});
+
+// The root `.template.issue.md` is this repo's dogfood copy of the canonical
+// guide `init` ships; like the Issue Form, it is copied verbatim, so it must
+// stay byte-identical to the bundle or dogfooding drifts from what consumers get.
+test("the dogfood root Author guide is byte-identical to the templates bundle", () => {
+  assert.equal(read(".template.issue.md"), read("templates/markdown/issue.md"));
+});
+
 // The README restates the rules as the human-readable bar. That is accepted
 // duplication, kept safe by this drift test. The phrasing per rule property is
 // prose (can't be derived), but the values come from RULES, so coverage is by

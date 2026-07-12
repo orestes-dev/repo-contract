@@ -108,21 +108,33 @@ ready labels explicitly.
 npx github:orestes-dev/quality-gate init
 ```
 
-Run from the repo root. This drops four files, which together are the opt-in:
+Run from the repo root. This drops five files, which together are the opt-in:
 
 - `.github/ISSUE_TEMPLATE/task.yml`: the Issue Form (GitHub-UI rendering of the
   `src/rules.js` structure, drift-checked against it).
+- `.template.issue.md`: the [issue Author guide](#the-issue-author-guide) (the
+  LLM-facing rendering of the same structure).
 - `.github/workflows/issue-quality.yml`: a thin workflow calling the shared
   Action at `@main` for the issue gate.
 - `.github/PULL_REQUEST_TEMPLATE.md`: the PR Form (required sections).
 - `.github/workflows/pr-quality.yml`: a thin workflow calling the shared Action
   at `@main` for the PR gate (merge-blocking).
 
-Commit all four. `init` then prints a Suggested rule to stdout: an agent-guidance
-snippet naming both Forms and the matching pre-flight `validate` / `validate-pr`
-step, for you to paste into your own agent-rules file (`AGENTS.md`, `CLAUDE.md`,
-editor rules). `init` writes it to no file, so it never clobbers a file it does
-not own.
+Commit all five. `init` then prints a Suggested rule to stdout: an agent-guidance
+snippet pointing at the issue Author guide and the PR Form and naming the matching
+pre-flight `validate` / `validate-pr` step, for you to paste into your own
+agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor rules). `init` writes it to no
+file, so it never clobbers a file it does not own.
+
+### The issue Author guide
+
+`.template.issue.md` is the LLM-facing companion to the Issue Form: a section per
+field carrying the examples, voice, and guidance the GitHub YAML form cannot hold,
+for an agent to follow when drafting an issue body. GitHub ignores it (the name is
+not a reserved template path, so it never pollutes the new-issue chooser). It is a
+rendering of the same `src/rules.js` structure as the Issue Form: only its
+headings and their order are drift-checked; its prose is deliberately richer and
+free to differ. The Suggested rule points agents at it.
 
 Re-running `init` later is safe: unchanged files are left alone. If a bundled
 template has moved on and your copy is stale (or you edited it locally), `init`
@@ -290,11 +302,13 @@ plus the constraints), read at runtime; the Issue Form YAML is a drift-checked
 rendering of that structure.
 
 `templates/` is the canonical bundle `init` copies into every consumer:
-`templates/form/task.yml` (the Issue Form) and `templates/workflow/{issue,pr}-quality.yml`
-(the thin workflows). This repo's own `.github/` is a dogfood instance of that
-bundle: the applied Issue Form is drift-tested byte-identical to the canonical
-one, and each dogfood workflow is drift-tested to agree with its consumer
-template on every shared field (they differ only on `uses: ./` vs `@main`).
+`templates/form/task.yml` (the Issue Form), `templates/markdown/issue.md` (the
+issue Author guide), and `templates/workflow/{issue,pr}-quality.yml` (the thin
+workflows). This repo's own `.github/` and root `.template.issue.md` are a
+dogfood instance of that bundle: the applied Issue Form and Author guide are
+drift-tested byte-identical to the canonical ones, and each dogfood workflow is
+drift-tested to agree with its consumer template on every shared field (they
+differ only on `uses: ./` vs `@main`).
 
 [`CONTEXT.md`](CONTEXT.md) is the domain glossary:
 Issue Form, structure, field, section, rule, check, scorecard, override.

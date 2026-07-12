@@ -1,6 +1,6 @@
-// `init`: scaffold the Issue Form + PR Form and their thin workflows into the
-// current repo, upgrade drifted copies in place under `--force`, and print the
-// Suggested rule to stdout (written to no file).
+// `init`: scaffold the Issue Form + PR Form, the issue Author guide, and their
+// thin workflows into the current repo, upgrade drifted copies in place under
+// `--force`, and print the Suggested rule to stdout (written to no file).
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -18,6 +18,12 @@ const TEMPLATES = [
     // Consumer's copy is UI-only; the gate reads structure from its own checkout.
     from: join(ROOT, "templates", "form", "task.yml"),
     to: join(".github", "ISSUE_TEMPLATE", "task.yml"),
+  },
+  {
+    // Issue Author guide: the LLM-facing companion to the Issue Form, dropped at
+    // the consumer root under a non-reserved name GitHub ignores.
+    from: join(ROOT, "templates", "markdown", "issue.md"),
+    to: ".template.issue.md",
   },
   {
     from: join(ROOT, "templates", "workflow", "issue-quality.yml"),
@@ -49,9 +55,9 @@ const DRIFT = "drift";
 const SUGGESTED_RULE = `Suggested rule (paste into AGENTS.md, CLAUDE.md, or your editor rules; init
 prints this and writes it nowhere):
 
-  When opening an issue in this repo, fill every section of the Issue Form
-  (.github/ISSUE_TEMPLATE/task.yml), then pre-flight validate the drafted body
-  before \`gh issue create\`:
+  When opening an issue in this repo, follow the issue Author guide
+  (.template.issue.md) to fill every section, then pre-flight validate the
+  drafted body before \`gh issue create\`:
 
       npx github:orestes-dev/quality-gate validate <body-file> --title "<title>"
 
