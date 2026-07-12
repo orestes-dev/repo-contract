@@ -23,5 +23,5 @@ jobs:
        (github.event.label.name == 'override:issue-quality' ||
         startsWith(github.event.label.name, 'issue-quality:')))
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./
