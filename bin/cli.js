@@ -42,7 +42,7 @@ async function main() {
   const [command, ...rest] = process.argv.slice(2);
   switch (command) {
     case "init":
-      return init();
+      return init(rest);
     case "validate":
       return cmdValidate(rest);
     case "sweep":
@@ -50,7 +50,8 @@ async function main() {
     default:
       console.error(
         "usage: issue-quality-gate <init|validate|sweep>\n" +
-          "  init             scaffold the Issue Form + workflow into this repo\n" +
+          "  init [--force]   scaffold the Issue Form + workflow into this repo\n" +
+          "                   (fails on drifted files; --force upgrades in place)\n" +
           "  validate <file> [--title <title>]  validate an issue body file (exit 1 on hard errors)\n" +
           "  sweep            backfill labels + scorecards on a repo's open issues",
       );

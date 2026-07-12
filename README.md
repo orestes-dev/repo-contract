@@ -88,7 +88,14 @@ Run from the repo root. This drops two files, which together are the opt-in:
 - `.github/workflows/issue-quality.yml`: a thin workflow calling the shared
   Action at `@main`.
 
-Commit both. CI runs on `issues: opened` / `edited` always, and on `labeled` /
+Commit both. Re-running `init` later is safe: unchanged files are left alone. If
+a bundled template has moved on and your copy is stale (or you edited it
+locally), `init` writes nothing and exits 1, listing what drifted. Re-run
+`init --force` to overwrite the drifted files in place; since both are committed,
+`git diff` afterwards shows exactly what changed and lets you restore any local
+edits.
+
+CI runs on `issues: opened` / `edited` always, and on `labeled` /
 `unlabeled` only when a human touches `override:issue-quality` or an
 `issue-quality:*` label. The gate's own label writes (as the CI bot) are
 excluded, so it never re-triggers itself; a human hand-editing a quality label
