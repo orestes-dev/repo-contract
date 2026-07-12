@@ -13,6 +13,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadForm } from "../src/form.js";
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(ROOT, "bin", "cli.js");
 
@@ -188,4 +190,20 @@ test("validate-pr exits 2 on a usage error when no file is given", () => {
     assert.equal(status, 2);
     assert.match(stderr, /usage: quality-gate validate-pr <file>/);
   });
+});
+
+test("scaffold prints one `### <heading>` per form field, in form order", () => {
+  const { status, stdout } = runCli(ROOT, "scaffold");
+  assert.equal(status, 0);
+  // Drift-safe: the expected headings are derived from the same runtime form
+  // read, so renaming or reordering a field moves both sides together.
+  const expected = loadForm().map((field) => `### ${field.label}`);
+  const headings = stdout.split("\n").filter((line) => line.startsWith("### "));
+  assert.deepEqual(headings, expected);
+});
+
+test("usage lists the scaffold command", () => {
+  const { status, stderr } = runCli(ROOT, "bogus");
+  assert.equal(status, 2);
+  assert.match(stderr, /\bscaffold\b/);
 });

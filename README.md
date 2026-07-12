@@ -212,6 +212,18 @@ S
 Exits non-zero on errors. One validator backs both CI and pre-flight. Without
 `--title` the title check is skipped (a body file carries no title).
 
+To get that skeleton without hand-writing it, run `scaffold`. It prints a blank
+body with one `### ` heading per Issue Form field, in form order, for an agent to
+fill and then pre-flight validate:
+
+```sh
+npx github:orestes-dev/quality-gate scaffold > issue-body.md
+```
+
+The headings are derived from the form at runtime (the same read the validator
+uses), so the skeleton tracks the form with no committed duplicate. Issue-only:
+a PR agent fills the PR Form Markdown directly.
+
 ## Flow
 
 ```mermaid
