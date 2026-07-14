@@ -64,8 +64,8 @@ export const ISSUE_PRESENTATION = {
 /** @type {Presentation} */
 export const PR_PRESENTATION = {
   marker: PR_COMMENT_MARKER,
-  heading: "PR Quality Checklist",
-  cliLabel: "PR quality gate",
+  heading: "PR Readiness Checklist",
+  cliLabel: "PR readiness gate",
   footers: {
     [STATUS.FAIL]:
       `> This check is failing, which blocks merge. Fix the failing checks, or ` +

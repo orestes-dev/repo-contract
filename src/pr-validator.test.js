@@ -286,7 +286,7 @@ test("a clean PR gets the pass label and a scorecard comment", async () => {
   );
   const created = gh.calls.find((c) => c[0] === "createComment");
   assert.ok(created, "expected a scorecard comment");
-  assert.ok(created[2].includes("PR Quality Checklist"));
+  assert.ok(created[2].includes("PR Readiness Checklist"));
 });
 
 test("a structurally-clean PR fails when a linked issue is not ready", async () => {
@@ -367,7 +367,7 @@ test("override with rationale strips the quality label and keeps an annotated sc
   const updated = gh.calls.find((c) => c[0] === "updateComment");
   assert.ok(updated, "expected the scorecard to be updated, not removed");
   assert.ok(updated[2].includes("Gate overridden"));
-  assert.ok(updated[2].includes("PR Quality Checklist"));
+  assert.ok(updated[2].includes("PR Readiness Checklist"));
 });
 
 test("a bot-authored PR auto-passes without an override, even with a bad body", async () => {
@@ -461,7 +461,7 @@ test("the GitHub PR Form and the root PR Author guide are byte-identical", () =>
 
 // --- drift: the PR workflows stay coupled to the schema strings and each other ---
 
-const PR_QUALITY_PREFIX = PR_LABEL.FAILING.slice(
+const PR_READINESS_PREFIX = PR_LABEL.FAILING.slice(
   0,
   PR_LABEL.FAILING.indexOf(":") + 1,
 );
@@ -469,8 +469,8 @@ const GATE_SENDER = "github-actions[bot]";
 
 test("both PR workflows couple the trigger filter to the schema strings", () => {
   for (const rel of [
-    "templates/workflow/pr-quality.yml",
-    ".github/workflows/pr-quality.yml",
+    "templates/workflow/pr-readiness.yml",
+    ".github/workflows/pr-readiness.yml",
   ]) {
     const yaml = read(rel);
     assert.ok(
@@ -479,9 +479,9 @@ test("both PR workflows couple the trigger filter to the schema strings", () => 
     );
     assert.ok(
       yaml.includes(
-        `startsWith(github.event.label.name, '${PR_QUALITY_PREFIX}')`,
+        `startsWith(github.event.label.name, '${PR_READINESS_PREFIX}')`,
       ),
-      `${rel} is missing the quality-label self-heal guard`,
+      `${rel} is missing the readiness-label self-heal guard`,
     );
     assert.ok(
       yaml.includes(`github.event.sender.login != '${GATE_SENDER}'`),
@@ -491,8 +491,8 @@ test("both PR workflows couple the trigger filter to the schema strings", () => 
 });
 
 test("the two PR workflows agree on trigger, permissions, concurrency, and filter", () => {
-  const consumer = parse(read("templates/workflow/pr-quality.yml"));
-  const dogfood = parse(read(".github/workflows/pr-quality.yml"));
+  const consumer = parse(read("templates/workflow/pr-readiness.yml"));
+  const dogfood = parse(read(".github/workflows/pr-readiness.yml"));
 
   assert.deepEqual(
     consumer.on.pull_request.types,

@@ -120,7 +120,7 @@ Run from the repo root. This drops six files, which together are the opt-in:
   GitHub posts on a new PR.
 - `.template.pr.md`: the [PR Author guide](#the-pr-author-guide), byte-identical
   to the PR Form, the path an agent drafts a PR body against.
-- `.github/workflows/pr-quality.yml`: a thin workflow calling the shared Action
+- `.github/workflows/pr-readiness.yml`: a thin workflow calling the shared Action
   at `@main` for the PR gate (merge-blocking).
 
 Commit all six. `init` then prints a Suggested rule to stdout: an agent-guidance
@@ -280,14 +280,14 @@ The PR structure is defined by a code descriptor (`src/pr-validator.js`), the
 source of truth the Markdown template is drift-tested against. Any error (a
 missing section, a non-conventional title) **hard-fails CI**, turning the check
 red and blocking merge; warnings stay green. Outcomes carry exactly one of
-`pr-quality:pass` / `pr-quality:warning` / `pr-quality:failing` plus an upserted
-**PR Quality Checklist** scorecard, both diff-based like the issue gate.
+`pr-readiness:pass` / `pr-readiness:warning` / `pr-readiness:failing` plus an upserted
+**PR Readiness Checklist** scorecard, both diff-based like the issue gate.
 
 Bot-authored PRs (actor login ends in `[bot]`) auto-pass with no override, since
-no human is present to apply one. A human bypasses with `override:pr-quality`
+no human is present to apply one. A human bypasses with `override:pr-readiness`
 plus a `## Override rationale` section, mirroring the issue override. The
 consumer workflow lives in
-[`templates/workflow/pr-quality.yml`](templates/workflow/pr-quality.yml) and needs
+[`templates/workflow/pr-readiness.yml`](templates/workflow/pr-readiness.yml) and needs
 `permissions: pull-requests: write`, `contents: read`, and `issues: read`. The
 last is required so the linked-issue readiness check can read the labels of
 same-repo issues the PR closes (`closingIssuesReferences`). Without `issues:

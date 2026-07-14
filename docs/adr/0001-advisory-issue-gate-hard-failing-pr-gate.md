@@ -13,9 +13,9 @@ prevent the unwanted state.
 ## Consequences
 
 - Tools and reviewers reading a PR rely on the **check status** as the
-  merge-blocking signal; the `pr-quality:*` labels and the scorecard comment are
+  merge-blocking signal; the `pr-readiness:*` labels and the scorecard comment are
   explanatory, not the gate itself.
-- The only human bypass is the `override:pr-quality` label plus a written
+- The only human bypass is the `override:pr-readiness` label plus a written
   `## Override rationale` section, mirroring the issue override. Bot-authored PRs
   (actor ends in `[bot]`) auto-pass, since no human is present to apply an
   override to, for example, a Dependabot bump.

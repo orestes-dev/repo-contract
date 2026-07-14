@@ -18,7 +18,7 @@ const CLI = join(ROOT, "bin", "cli.js");
 
 const FORM = join(".github", "ISSUE_TEMPLATE", "task.yml");
 const PR_FORM = join(".github", "PULL_REQUEST_TEMPLATE.md");
-const PR_WORKFLOW = join(".github", "workflows", "pr-quality.yml");
+const PR_WORKFLOW = join(".github", "workflows", "pr-readiness.yml");
 
 // Run `cli.js init` (plus any extra args) with cwd set to `dir`.
 function runInit(dir, ...args) {
@@ -169,7 +169,7 @@ test("validate-pr passes a well-formed PR body with a conventional title", () =>
       "feat(cli): add validate-pr preflight command",
     );
     assert.equal(status, 0);
-    assert.match(stdout, /PR quality gate: passed/);
+    assert.match(stdout, /PR readiness gate: passed/);
   });
 });
 
@@ -185,7 +185,7 @@ test("validate-pr exits 1 on a missing required section", () => {
       "feat(cli): add validate-pr preflight command",
     );
     assert.equal(status, 1);
-    assert.match(stdout, /PR quality gate: FAILED/);
+    assert.match(stdout, /PR readiness gate: FAILED/);
     assert.match(stdout, /Verification/);
   });
 });

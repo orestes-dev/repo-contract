@@ -44,8 +44,8 @@ const TEMPLATES = [
     to: ".template.pr.md",
   },
   {
-    from: join(ROOT, "templates", "workflow", "pr-quality.yml"),
-    to: join(".github", "workflows", "pr-quality.yml"),
+    from: join(ROOT, "templates", "workflow", "pr-readiness.yml"),
+    to: join(".github", "workflows", "pr-readiness.yml"),
   },
 ];
 
@@ -148,7 +148,7 @@ export function init(argv = []) {
   }
 
   console.log(
-    "\nDone. Commit these files to opt this repo into the issue and PR quality gates.\n" +
+    "\nDone. Commit these files to opt this repo into the issue quality and PR readiness gates.\n" +
       "The issue gate only labels issues going forward. To backfill labels + scorecards " +
       "onto the existing open backlog, run: quality-gate sweep",
   );
