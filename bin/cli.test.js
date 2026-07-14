@@ -36,7 +36,7 @@ function runCli(dir, ...args) {
   });
 }
 
-// A PR body that passes every local structural check: both required sections
+// A PR body that passes every local structural check: every required section
 // present and non-empty, no Divergence flagged.
 const PASSING_PR_BODY = [
   "## Summary",
@@ -44,6 +44,12 @@ const PASSING_PR_BODY = [
   "",
   "## Verification",
   "`yarn test` is green.",
+  "",
+  "## Scope",
+  "The bin/ CLI only.",
+  "",
+  "## Decisions",
+  "None; mirrors the existing validate command.",
   "",
 ].join("\n");
 

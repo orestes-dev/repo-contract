@@ -12,7 +12,7 @@ The GitHub YAML template (`.github/ISSUE_TEMPLATE/task.yml`) GitHub's issue-form
 _Avoid_: Template (ambiguous with workflow template), schema.
 
 **PR Form**:
-The Markdown rendering of the PR gate's **Intent** (`PR_SECTIONS`). GitHub renders `.github/PULL_REQUEST_TEMPLATE.md` as the PR body; the byte-identical `.template.pr.md` at the repo root is its **Author guide**. Because both are the same bytes, PR authoring guidance lives in HTML comments (hidden in the posted body, read by author and LLM in the raw file). GitHub does not enforce the sections, so the PR gate enforces them itself. Its required sections are Summary, Verification, and Divergence.
+The Markdown rendering of the PR gate's **Intent** (`PR_SECTIONS`). GitHub renders `.github/PULL_REQUEST_TEMPLATE.md` as the PR body; the byte-identical `.template.pr.md` at the repo root is its **Author guide**. Because both are the same bytes, PR authoring guidance lives in HTML comments (hidden in the posted body, read by author and LLM in the raw file). GitHub does not enforce the sections, so the PR gate enforces them itself. Its required sections are Summary, Verification, Scope, and Decisions; Divergence is optional until its flag checkbox is checked, when it owes a rationale.
 _Avoid_: Template.
 
 **Author guide**:

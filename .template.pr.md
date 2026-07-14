@@ -15,6 +15,19 @@ reviewer will see, not the file list. Required. -->
 <!-- How you know it works: the tests you ran, the commands, the manual checks.
 "Trust me" is not verification. Required. -->
 
+## Scope
+
+<!-- Which app, package, or area this PR touches, and the boundary you kept it
+within. Name it so a reviewer can confirm the change stayed in one place. The
+gate checks this section is present; a repo's own governance may enforce the
+boundary itself. Required. -->
+
+## Decisions
+
+<!-- The settled choices this PR makes and why: the design call, the tradeoff, an
+ADR you added or followed. "None" is a valid answer, but say so rather than
+leaving it blank. Required. -->
+
 ## Divergence
 
 <!-- Did the implementation depart from the linked issue's original what/why? If

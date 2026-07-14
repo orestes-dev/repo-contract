@@ -257,8 +257,12 @@ A second entry point runs the same core over a pull request on `pull_request`
 events. It checks structural presence, never conformance:
 
 - **Title**: Conventional Commits `type(scope): summary`, same rule as issues.
-- **Required sections**: `## Summary` and `## Verification` present and
-  non-empty.
+- **Required sections**: `## Summary`, `## Verification`, `## Scope`, and
+  `## Decisions` present and non-empty. `Scope` names the app/package/area the PR
+  touches (a repo's own governance may enforce the boundary itself); `Decisions`
+  records the settled choices and any ADR added or followed (`None` is a valid,
+  explicit answer). Both mirror the issue gate's `Decisions` and affected-files
+  vocabulary, so a PR and the issue it closes speak the same sections.
 - **Divergence**: the `## Divergence` section is optional until its checkbox is
   checked. A checked flag with no written rationale hard-fails; unchecked (or
   checked with a rationale) passes. The gate checks the rationale is present,

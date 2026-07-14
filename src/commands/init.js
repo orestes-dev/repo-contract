@@ -71,7 +71,7 @@ prints this and writes it nowhere):
       npx github:orestes-dev/quality-gate validate <body-file> --title "<title>"
 
   When opening a pull request, follow the PR Author guide (.template.pr.md) to
-  fill every required section — Summary, Verification, Divergence — then
+  fill every required section — Summary, Verification, Scope, Decisions — then
   pre-flight validate the drafted body before \`gh pr create\`:
 
       npx github:orestes-dev/quality-gate validate-pr <body-file> --title "<title>"

@@ -21,7 +21,7 @@ import { prGate } from "./gates/pr.js";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
 
-// A well-formed PR body: both required sections present and non-empty.
+// A well-formed PR body: every required section present and non-empty.
 const goodBody = [
   "## Summary",
   "",
@@ -30,6 +30,14 @@ const goodBody = [
   "## Verification",
   "",
   "`yarn test` green; manually typed in the search box and watched the network tab.",
+  "",
+  "## Scope",
+  "",
+  "Touches only the search input component; no API changes.",
+  "",
+  "## Decisions",
+  "",
+  "Chose a 300ms debounce over throttling to favour final-keystroke accuracy.",
   "",
 ].join("\n");
 

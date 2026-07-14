@@ -43,14 +43,16 @@ export const DIVERGENCE_FLAG =
 
 /**
  * The PR structure descriptor: the source of truth the Markdown template is
- * drift-tested against. Summary and Verification are required by presence;
- * Divergence is optional until its flag checkbox is checked, when it owes a
- * rationale (enforced by `checkDivergence`, not the presence loop).
+ * drift-tested against. Summary, Verification, Scope, and Decisions are required
+ * by presence; Divergence is optional until its flag checkbox is checked, when it
+ * owes a rationale (enforced by `checkDivergence`, not the presence loop).
  * @type {PrSection[]}
  */
 export const PR_SECTIONS = [
   { heading: "Summary", required: true },
   { heading: "Verification", required: true },
+  { heading: "Scope", required: true },
+  { heading: "Decisions", required: true },
   { heading: "Divergence", required: false, flag: DIVERGENCE_FLAG },
 ];
 
