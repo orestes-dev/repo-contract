@@ -44,10 +44,10 @@ The single bot comment on an issue listing every check and its outcome, kept in 
 _Avoid_: Report (reserved for the CLI's terminal output), comment.
 
 **Quality Label**:
-Exactly one of `issue-quality:pass` / `issue-quality:warning` / `issue-quality:failing` (on issues) or `pr-quality:pass` / `pr-quality:warning` / `pr-quality:failing` (on PRs), mutually exclusive within its object, reflecting the worst check outcome. The gate's machine-readable verdict. On issues it is the verdict; on PRs the merge-blocking verdict is the CI **Check**, and the label is a filterable echo of it.
+Exactly one of `issue-quality:pass` / `issue-quality:warning` / `issue-quality:failing` (on issues) or `pr-readiness:pass` / `pr-readiness:warning` / `pr-readiness:failing` (on PRs), mutually exclusive within its object, reflecting the worst check outcome. The gate's machine-readable verdict. On issues it is the verdict; on PRs the merge-blocking verdict is the CI **Check**, and the label is a filterable echo of it.
 
 **Override**:
-The manual escape hatch: an `override:<gate>` label (`override:issue-quality` or `override:pr-quality`) plus a written `## Override rationale` section bypasses that gate. Neither alone suffices. It strips the quality label but not the scorecard, which stays with a banner acknowledging the bypass. The override label is human-applied and the gate never removes it, so it persists as a durable, filterable signal. On the PR gate, a bot-authored PR (actor ends in `[bot]`) is exempt without an override, since no human is present to apply one.
+The manual escape hatch: an `override:<gate>` label (`override:issue-quality` or `override:pr-readiness`) plus a written `## Override rationale` section bypasses that gate. Neither alone suffices. It strips the quality label but not the scorecard, which stays with a banner acknowledging the bypass. The override label is human-applied and the gate never removes it, so it persists as a durable, filterable signal. On the PR gate, a bot-authored PR (actor ends in `[bot]`) is exempt without an override, since no human is present to apply one.
 
 **Readiness**:
 Whether an issue is cleared for a consumer (human or automation) to pick up. Distinct from the **Quality Label**: readiness is "not blocked," the label is the gate's verdict on a single issue. An issue is ready when it carries `issue-quality:pass`, `issue-quality:warning` (non-blocking by design), or `override:issue-quality` (a human waived the block). `issue-quality:failing` and an issue with no quality label at all (un-gated, or the run is in flight) are not ready. Consumers express readiness as a positive union of the ready labels, never as the absence of `failing`, which would sweep in un-gated issues.
@@ -61,7 +61,7 @@ A declared departure of a PR's implementation from its Linked issue's original w
 _Avoid_: Deviation, scope change.
 
 **PR Readiness**:
-Whether a PR is cleared to merge by the gate. Distinct from **Readiness** (an issue property): a PR is ready when it has no error (its required sections are present, its title is conventional, and **every** same-repo Linked issue is itself ready), or a human waived the block with `override:pr-quality` plus a rationale, or a bot authored it. Expressed as a passing (green) status **Check**, the merge-blocking signal; the `pr-quality:*` label and scorecard are explanatory.
+Whether a PR is cleared to merge by the gate. Distinct from **Readiness** (an issue property): a PR is ready when it has no error (its required sections are present, its title is conventional, and **every** same-repo Linked issue is itself ready), or a human waived the block with `override:pr-readiness` plus a rationale, or a bot authored it. Expressed as a passing (green) status **Check**, the merge-blocking signal; the `pr-readiness:*` label and scorecard are explanatory.
 
 **Suggested rule**:
 The agent-guidance snippet `init` prints to stdout (it does not write it to any file) for the operator to paste into their own agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor rules). It tells an agent to follow the **Author guide** (`.template.issue.md` / `.template.pr.md`) and to pre-flight validate before opening the issue or PR. Kept out of the repo so `init` never clobbers a file it does not own.
@@ -102,7 +102,7 @@ A restatement deliberately left in place because collapsing it costs more than i
 
 **Dev**: Then someone fixes #42 and it flips to pass. Does the PR go green on its own?
 
-**Domain expert**: No, and that's deliberate. The PR check only re-runs on PR events, so it goes stale. The scorecard tells the author to re-run it once the issue is ready, rather than us coupling the two gates. If they can't wait, `override:pr-quality` plus a rationale is the escape hatch.
+**Domain expert**: No, and that's deliberate. The PR check only re-runs on PR events, so it goes stale. The scorecard tells the author to re-run it once the issue is ready, rather than us coupling the two gates. If they can't wait, `override:pr-readiness` plus a rationale is the escape hatch.
 
 **Dev**: The PR gate never asks whether the code actually matches #42's acceptance criteria?
 
