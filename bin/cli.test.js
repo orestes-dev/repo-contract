@@ -183,14 +183,16 @@ test("validate-issue exits 2 on a usage error when no file is given", () => {
   });
 });
 
-test("validate is a deprecated alias that still dispatches to validate-issue", () => {
+test("validate is no longer a command and hits the usage-error path", () => {
   withTempDir((dir) => {
     const file = join(dir, "issue.md");
     writeFileSync(file, PASSING_ISSUE_BODY);
-    const { status, stdout, stderr } = runCli(dir, "validate", "issue.md");
-    assert.equal(status, 0);
-    assert.match(stdout, /Issue quality gate: passed/);
-    assert.match(stderr, /`validate` is deprecated; use `validate-issue`/);
+    const { status, stderr } = runCli(dir, "validate", "issue.md");
+    assert.equal(status, 2);
+    assert.match(
+      stderr,
+      /usage: quality-gate <init\|validate-issue\|validate-pr\|sweep>/,
+    );
   });
 });
 

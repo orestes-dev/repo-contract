@@ -80,13 +80,6 @@ async function main() {
       return init(rest);
     case "validate-issue":
       return cmdValidateIssue(rest);
-    case "validate":
-      // Deprecated alias for `validate-issue`, kept so existing callers do not
-      // break. Dropped from USAGE; a later deprecation cycle can remove it.
-      console.error(
-        "warning: `validate` is deprecated; use `validate-issue` instead",
-      );
-      return cmdValidateIssue(rest);
     case "validate-pr":
       return cmdValidatePr(rest);
     case "sweep":
