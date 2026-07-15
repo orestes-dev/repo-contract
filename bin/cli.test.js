@@ -13,6 +13,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { goodBody as PASSING_ISSUE_BODY } from "../src/fixtures.js";
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(ROOT, "bin", "cli.js");
 
@@ -85,7 +87,7 @@ test("init prints the Suggested rule naming both Forms and validate-pr, writing 
     assert.match(stdout, /Suggested rule/);
     assert.match(stdout, /\.template\.issue\.md/);
     assert.match(stdout, /\.template\.pr\.md/);
-    assert.match(stdout, /\bvalidate\b/);
+    assert.match(stdout, /validate-issue/);
     assert.match(stdout, /validate-pr/);
     // Stdout-only: no rules file is written into the repo.
     assert.ok(!existsSync(join(dir, "AGENTS.md")));
@@ -157,6 +159,41 @@ test("init --force upgrades drifted files and skips identical ones", () => {
   });
 });
 
+test("validate-issue passes a well-formed issue body with a conventional title", () => {
+  withTempDir((dir) => {
+    const file = join(dir, "issue.md");
+    writeFileSync(file, PASSING_ISSUE_BODY);
+    const { status, stdout } = runCli(
+      dir,
+      "validate-issue",
+      "issue.md",
+      "--title",
+      "feat(search): debounce the query input",
+    );
+    assert.equal(status, 0);
+    assert.match(stdout, /Issue quality gate: passed/);
+  });
+});
+
+test("validate-issue exits 2 on a usage error when no file is given", () => {
+  withTempDir((dir) => {
+    const { status, stderr } = runCli(dir, "validate-issue");
+    assert.equal(status, 2);
+    assert.match(stderr, /usage: quality-gate validate-issue <file>/);
+  });
+});
+
+test("validate is a deprecated alias that still dispatches to validate-issue", () => {
+  withTempDir((dir) => {
+    const file = join(dir, "issue.md");
+    writeFileSync(file, PASSING_ISSUE_BODY);
+    const { status, stdout, stderr } = runCli(dir, "validate", "issue.md");
+    assert.equal(status, 0);
+    assert.match(stdout, /Issue quality gate: passed/);
+    assert.match(stderr, /`validate` is deprecated; use `validate-issue`/);
+  });
+});
+
 test("validate-pr passes a well-formed PR body with a conventional title", () => {
   withTempDir((dir) => {
     const file = join(dir, "pr.md");
@@ -204,7 +241,7 @@ test("help prints usage to stdout and exits 0", () => {
     assert.equal(status, 0, `${arg} should exit 0`);
     assert.match(
       stdout,
-      /usage: quality-gate <init\|validate\|validate-pr\|sweep>/,
+      /usage: quality-gate <init\|validate-issue\|validate-pr\|sweep>/,
     );
     assert.equal(stderr, "");
   }
@@ -215,7 +252,7 @@ test("an unknown command prints usage to stderr and exits 2", () => {
   assert.equal(status, 2);
   assert.match(
     stderr,
-    /usage: quality-gate <init\|validate\|validate-pr\|sweep>/,
+    /usage: quality-gate <init\|validate-issue\|validate-pr\|sweep>/,
   );
   assert.equal(stdout, "");
 });
@@ -223,7 +260,7 @@ test("an unknown command prints usage to stderr and exits 2", () => {
 test("usage lists the supported commands and drops the removed scaffold command", () => {
   const { status, stderr } = runCli(ROOT, "bogus");
   assert.equal(status, 2);
-  assert.match(stderr, /init\|validate\|validate-pr\|sweep/);
+  assert.match(stderr, /init\|validate-issue\|validate-pr\|sweep/);
   // "scaffold" survives only as the verb in init's description, never as a
   // command line of its own.
   assert.doesNotMatch(stderr, /^\s*scaffold\s/m);

@@ -125,7 +125,7 @@ Run from the repo root. This drops six files, which together are the opt-in:
 
 Commit all six. `init` then prints a Suggested rule to stdout: an agent-guidance
 snippet pointing at the issue and PR Author guides and naming the matching
-pre-flight `validate` / `validate-pr` step, for you to paste into your own
+pre-flight `validate-issue` / `validate-pr` step, for you to paste into your own
 agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor rules). `init` writes it to no
 file, so it never clobbers a file it does not own.
 
@@ -204,7 +204,7 @@ Before `gh issue create`, run the same validator on a draft file. Pass
 `--title` to also check the title against the Conventional Commits format:
 
 ```sh
-npx github:orestes-dev/quality-gate validate path/to/issue-body.md \
+npx github:orestes-dev/quality-gate validate-issue path/to/issue-body.md \
   --title "feat(search): debounce the query input"
 ```
 
@@ -294,7 +294,7 @@ same-repo issues the PR closes (`closingIssuesReferences`). Without `issues:
 read` the gate hard-fails every PR that uses `Closes #N`.
 
 Before opening a PR, run the same structural checks on a draft body file with
-`validate-pr`, the PR-side mirror of `validate`:
+`validate-pr`, the PR-side mirror of `validate-issue`:
 
 ```sh
 npx github:orestes-dev/quality-gate validate-pr path/to/pr-body.md \

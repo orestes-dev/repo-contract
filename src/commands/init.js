@@ -68,7 +68,7 @@ prints this and writes it nowhere):
   (.template.issue.md) to fill every section, then pre-flight validate the
   drafted body before \`gh issue create\`:
 
-      npx github:orestes-dev/quality-gate validate <body-file> --title "<title>"
+      npx github:orestes-dev/quality-gate validate-issue <body-file> --title "<title>"
 
   When opening a pull request, follow the PR Author guide (.template.pr.md) to
   fill every required section — Summary, Verification, Scope, Decisions — then

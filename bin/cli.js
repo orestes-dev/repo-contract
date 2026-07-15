@@ -12,11 +12,11 @@ import { sweep } from "../src/commands/sweep.js";
 
 /** Usage banner shared by the help path (stdout, exit 0) and the unknown-command path (stderr, exit 2). */
 const USAGE =
-  "usage: quality-gate <init|validate|validate-pr|sweep>\n" +
+  "usage: quality-gate <init|validate-issue|validate-pr|sweep>\n" +
   "  init [--force]   scaffold the Issue Form + workflow into this repo\n" +
   "                   (fails on drifted files; --force upgrades in place)\n" +
-  "  validate <file> [--title <title>]     validate an issue body file (exit 1 on hard errors)\n" +
-  "  validate-pr <file> [--title <title>]  validate a PR body file (exit 1 on hard errors)\n" +
+  "  validate-issue <file> [--title <title>]  validate an issue body file (exit 1 on hard errors)\n" +
+  "  validate-pr <file> [--title <title>]     validate a PR body file (exit 1 on hard errors)\n" +
   "  sweep            backfill labels + scorecards on a repo's open issues";
 
 /**
@@ -26,14 +26,16 @@ const USAGE =
  * @param {string[]} args - Positional file path plus optional `--title <title>`.
  * @returns {void}
  */
-function cmdValidate(args) {
+function cmdValidateIssue(args) {
   const titleFlag = args.indexOf("--title");
   const title = titleFlag === -1 ? undefined : args[titleFlag + 1];
   const file = args.find(
     (a, i) => !a.startsWith("--") && (titleFlag === -1 || i !== titleFlag + 1),
   );
   if (!file) {
-    console.error("usage: quality-gate validate <file> [--title <title>]");
+    console.error(
+      "usage: quality-gate validate-issue <file> [--title <title>]",
+    );
     process.exit(2);
   }
   const body = readFileSync(resolve(process.cwd(), file), "utf8");
@@ -76,8 +78,15 @@ async function main() {
   switch (command) {
     case "init":
       return init(rest);
+    case "validate-issue":
+      return cmdValidateIssue(rest);
     case "validate":
-      return cmdValidate(rest);
+      // Deprecated alias for `validate-issue`, kept so existing callers do not
+      // break. Dropped from USAGE; a later deprecation cycle can remove it.
+      console.error(
+        "warning: `validate` is deprecated; use `validate-issue` instead",
+      );
+      return cmdValidateIssue(rest);
     case "validate-pr":
       return cmdValidatePr(rest);
     case "sweep":

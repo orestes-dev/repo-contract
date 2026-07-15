@@ -9,7 +9,7 @@ yarn test
 
 ```sh
 # Validate an issue body file the way CI would; title optional
-node bin/cli.js validate path/to/body.md --title "feat(x): do the thing"
+node bin/cli.js validate-issue path/to/body.md --title "feat(x): do the thing"
 
 # Scaffold the Issue Form + workflow into another repo
 node bin/cli.js init

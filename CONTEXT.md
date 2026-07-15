@@ -70,7 +70,7 @@ The agent-guidance snippet `init` prints to stdout (it does not write it to any 
 A local, on-demand backfill that applies quality labels and scorecards across a repo's existing open issues, using the operator's own `gh` session rather than CI credentials.
 
 **Pre-flight validation**:
-Running the validator against a drafted issue body locally (`validate <file>`) before `gh issue create`, to catch hard errors before the issue exists.
+Running the validator against a drafted issue body locally (`validate-issue <file>`) before `gh issue create`, to catch hard errors before the issue exists.
 
 **Drift test**:
 A test asserting that a restated copy of a fact still matches its single source. The standing cases: each rendering's structure against its **Intent** (the Issue Form and the Author guides against `rules.js`, the PR template against `PR_SECTIONS`), the README threshold numbers against the rules, this repo's dogfood copies against the canonical `templates/` bundle, and the two workflow files against each other's shared parts. Renderings are checked as strictly as their format allows: the YAML on headings, order, required, and options; the Markdown guides on headings and order only, since their prose is free. Duplication kept on purpose is made safe by a drift test rather than eliminated.
