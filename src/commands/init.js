@@ -58,25 +58,26 @@ const DRIFT = "drift";
 
 // Agent-guidance snippet printed to stdout for the operator to paste into their
 // own agent-rules file (AGENTS.md, CLAUDE.md, editor rules). `init` never writes
-// it anywhere, so it cannot clobber a file it does not own. It names both Forms
-// and the matching pre-flight command that catches hard errors before the object
-// exists on GitHub.
+// it anywhere, so it cannot clobber a file it does not own.
+//
+// Deliberately names no subcommand, flag, or exit code: a pasted copy is beyond
+// this repo's reach forever after, so anything it pins about the CLI surface
+// rots silently the next time that surface moves. Name only what `init` itself
+// writes and drift-checks (the Author guides) plus the package, which is the
+// discovery entrypoint. `--help` is generated from the live CLI and cannot go
+// stale.
 const SUGGESTED_RULE = `Suggested rule (paste into AGENTS.md, CLAUDE.md, or your editor rules; init
 prints this and writes it nowhere):
 
   When opening an issue in this repo, follow the issue Author guide
-  (.template.issue.md) to fill every section, then pre-flight validate the
-  drafted body before \`gh issue create\`:
+  (.template.issue.md) to fill every section. When opening a pull request,
+  follow the PR Author guide (.template.pr.md) the same way.
 
-      npx github:orestes-dev/quality-gate validate-issue <body-file> --title "<title>"
+  Pre-flight validate the drafted body before \`gh issue create\` /
+  \`gh pr create\`, and fix any hard errors before creating the object. Run the
+  CLI's help to discover the command for each:
 
-  When opening a pull request, follow the PR Author guide (.template.pr.md) to
-  fill every required section — Summary, Verification, Scope, Decisions — then
-  pre-flight validate the drafted body before \`gh pr create\`:
-
-      npx github:orestes-dev/quality-gate validate-pr <body-file> --title "<title>"
-
-  Fix any hard errors (the command exits 1) before creating the object.`;
+      npx github:orestes-dev/quality-gate --help`;
 
 /**
  * Classify each template's destination against the bundled source by exact

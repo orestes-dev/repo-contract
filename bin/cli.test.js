@@ -80,18 +80,31 @@ test("init warns and still scaffolds when cwd is not a git root", () => {
   });
 });
 
-test("init prints the Suggested rule naming both Forms and validate-pr, writing it nowhere", () => {
+test("init prints the Suggested rule naming both Forms and deferring to --help, writing it nowhere", () => {
   withTempDir((dir) => {
     const { status, stdout } = runInit(dir);
     assert.equal(status, 0);
     assert.match(stdout, /Suggested rule/);
     assert.match(stdout, /\.template\.issue\.md/);
     assert.match(stdout, /\.template\.pr\.md/);
-    assert.match(stdout, /validate-issue/);
-    assert.match(stdout, /validate-pr/);
+    assert.match(stdout, /quality-gate --help/);
     // Stdout-only: no rules file is written into the repo.
     assert.ok(!existsSync(join(dir, "AGENTS.md")));
     assert.ok(!existsSync(join(dir, "CLAUDE.md")));
+  });
+});
+
+// The Suggested rule gets pasted into consumer repos and is unreachable from
+// here afterwards. Pinning any part of the CLI surface in it strands every
+// consumer the next time that surface moves, which is what a `validate` ->
+// `validate-issue` rename already did once. Keep it de-pinned.
+test("the Suggested rule pins no CLI subcommand, flag, or exit code", () => {
+  withTempDir((dir) => {
+    const { stdout } = runInit(dir);
+    const rule = stdout.slice(stdout.indexOf("Suggested rule"));
+    assert.doesNotMatch(rule, /validate-issue|validate-pr|\bsweep\b/);
+    assert.doesNotMatch(rule, /--title|--force/);
+    assert.doesNotMatch(rule, /exits? \d/);
   });
 });
 
