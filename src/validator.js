@@ -288,7 +288,12 @@ function checkProse(field, rule, value) {
   }
   const max = rule?.maxLength;
   if (max && value.length > max) {
-    return check(id, heading, STATUS.WARN, `${core} — trim narrative bloat`);
+    return check(
+      id,
+      heading,
+      STATUS.WARN,
+      `${core} — consider trimming, but not at the cost of information`,
+    );
   }
   return check(id, heading, STATUS.PASS, core);
 }

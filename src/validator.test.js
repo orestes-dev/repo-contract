@@ -136,8 +136,11 @@ test("overlong context is a warning, not an error", () => {
   assert.deepEqual(failures(result.checks), []);
   const context = checkFor(result, "context");
   assert.equal(context.status, STATUS.WARN);
-  // Same rule core as the pass line, plus a value-free imperative; no length.
-  assert.equal(context.message, "30–1500 characters — trim narrative bloat");
+  // Same rule core as the pass line, plus a value-free suffix; no length.
+  assert.equal(
+    context.message,
+    "30–1500 characters — consider trimming, but not at the cost of information",
+  );
   assert.doesNotMatch(context.message, /\d+\s*chars/);
   assert.equal(labelFor(result), LABEL.WARNING);
 });
