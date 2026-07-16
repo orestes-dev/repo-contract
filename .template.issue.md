@@ -28,6 +28,11 @@ a page of background. This is the one field with a hard floor (too short is a
 hard error) and a soft ceiling (very long raises a warning, as a fluff
 detector): say what matters and stop.
 
+The ceiling counts the whole section, artifacts included, so a necessary table,
+schema, or payload can trip it on its own. That warning is advisory and never
+blocks: if the artifact earns its length, leave it and let the issue land as
+`issue-quality:warning`.
+
 Example:
 
 > The dashboard refetches every record on each keystroke in the search box,

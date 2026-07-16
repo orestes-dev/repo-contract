@@ -60,8 +60,8 @@ export const FIELDS = [
 /**
  * A constraint the field descriptor can't express, keyed by field `id`.
  * @typedef {object} Rule
- * @property {number} [minLength] - Prose length floor (hard).
- * @property {number} [maxLength] - Prose length ceiling (warning).
+ * @property {number} [minLength] - Section length floor (hard).
+ * @property {number} [maxLength] - Section length ceiling (warning).
  * @property {boolean} [checklist] - Field must be a markdown checklist.
  * @property {number} [minItems] - Minimum non-empty checklist items.
  * @property {string[]} [blocking] - Dropdown options too big to land as one issue.
