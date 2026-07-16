@@ -124,10 +124,14 @@ Run from the repo root. This drops six files, which together are the opt-in:
   at `@main` for the PR gate (merge-blocking).
 
 Commit all six. `init` then prints a Suggested rule to stdout: an agent-guidance
-snippet pointing at the issue and PR Author guides and naming the matching
-pre-flight `validate-issue` / `validate-pr` step, for you to paste into your own
-agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor rules). `init` writes it to no
-file, so it never clobbers a file it does not own.
+snippet pointing at the issue and PR Author guides and at the pre-flight step,
+for you to paste into your own agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor
+rules). `init` writes it to no file, so it never clobbers a file it does not own.
+
+The snippet names no subcommand or flag, and defers to `quality-gate --help` for
+the command surface. A pasted copy is beyond this repo's reach forever after, so
+anything it pins about the CLI rots silently the next time the CLI moves. `--help`
+is generated from the live CLI and cannot go stale.
 
 ### The issue Author guide
 
