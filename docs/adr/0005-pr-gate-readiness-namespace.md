@@ -17,7 +17,7 @@ workflow is `pr-readiness.yml`.
 Renaming the whole product (`quality-gate` the Action and repo) was rejected: the
 Action hosts both gates, and the issue gate genuinely checks issue _quality_
 (structure, completeness). Only the PR gate's user-facing namespace moves.
-(Superseded by ADR 0007: the product was renamed to `repo-contract` once it grew
+(Superseded by ADR 0008: the product was renamed to `repo-contract` once it grew
 past gating into hook distribution, drift detection, and scaffolding.)
 
 Renaming the Actions job (`quality-gate`), and therefore the emitted check

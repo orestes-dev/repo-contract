@@ -36,7 +36,7 @@ enough to strip types.
 [`.husky/commit-msg`](.husky/commit-msg) (Conventional Commits subject, em-dash
 policy). They are POSIX `sh` + `git` + `jq` only, never `node_modules`, so they
 run before `yarn install` and where `~/.dotfiles` is absent (CI, containers,
-fresh worktrees). quality-gate owns them byte-for-byte and drift-checks them
+fresh worktrees). repo-contract owns them byte-for-byte and drift-checks them
 against [`templates/husky/`](templates/husky/); edit the template and re-run
 `init --force`, never patch a vendored copy in place.
 
@@ -46,7 +46,7 @@ Each hook chains, as its last step, to an optional consumer-owned extension at
 (lint-staged, gitleaks, build). `init` never writes `.husky/local/`, so it
 survives `init --force`.
 
-Enforcement opt-outs live in a committed [`.quality-gate.json`](src/config.js) at
+Enforcement opt-outs live in a committed [`.repo-contract.json`](src/config.js) at
 the repo root (never per-machine `git config hooks.*`). Each opt-out under
 `overrides.<key>` carries a `value` the hook keys off and a required `reason`
 recorded as a data field, not a comment, so the hook can quote it verbatim when
@@ -59,7 +59,7 @@ file means full enforcement with no opt-outs.
 commit-validator suites, [`src/hooks.test.js`](src/hooks.test.js) exercises the
 vendored husky hooks (drift against the `templates/husky/` bundle, the
 `.husky/local/*` chain, and `init`'s drop/repair) and
-[`src/config.test.js`](src/config.test.js) covers the `.quality-gate.json`
+[`src/config.test.js`](src/config.test.js) covers the `.repo-contract.json`
 reader.
 
 ## Conventions

@@ -1,6 +1,6 @@
-# quality-gate owns the tier-2 repo-contract git hooks
+# repo-contract owns the tier-2 git hooks
 
-quality-gate is a safety package consumed across the org, so the commit-time
+repo-contract is a safety package consumed across the org, so the commit-time
 rules every consumer must obey belong here, not in one contributor's personal
 dotfiles. Those rules are the **tier-2 repo-contract**: Conventional Commits,
 the em-dash ban, and no commits on the default branch. They encode a contract
@@ -8,7 +8,7 @@ that binds CI and contributors who have no `~/.dotfiles` checkout, which is
 exactly the audience a globally configured `core.hooksPath` cannot reach.
 The tiered model that assigns these rules to a consumed package originates in
 dotfiles ADR 0002 ("Tiered git-hook enforcement with legible bypass"); this ADR
-records the ownership from quality-gate's side and the mechanisms that make it
+records the ownership from repo-contract's side and the mechanisms that make it
 real.
 
 Ownership means three things, all already in the code:
@@ -34,7 +34,7 @@ Ownership means three things, all already in the code:
   cannot distinguish stale-upstream from local customization and relies on the
   git diff to make the change reviewable.
 - **Opt-outs are reason-bearing data.** The hooks read a committed
-  `.quality-gate.json`, parsed by `loadConfig` / `parseConfig` in `src/config.js`.
+  `.repo-contract.json`, parsed by `loadConfig` / `parseConfig` in `src/config.js`.
   Each `overrides.<key>` entry is `{ value, reason }`, and `validateOverride`
   rejects an override whose `reason` is missing or empty: every opt-out must
   record why it exists. `formatOverride` quotes that reason verbatim into the
@@ -52,13 +52,13 @@ or a labeled override, never an invisible flag.
 ## Considered options
 
 - **Leave the ownership implicit in the code.** Rejected: a reader of
-  `docs/adr/` cannot discover why quality-gate ships git hooks, why drift is
+  `docs/adr/` cannot discover why repo-contract ships git hooks, why drift is
   byte-exact, or why opt-out reasons are a data field. The mechanisms are load
   bearing and deserve a recorded rationale here, not only upstream.
 - **Restate dotfiles ADR 0002 in full.** Rejected: the audience-split reasoning
   (which rules are tier-2 versus tier-1 agent-hygiene versus tier-3 project
   checks) is a dotfiles concern and lives there. This ADR cross-references it as
-  the origin and records only what quality-gate owns and enforces.
+  the origin and records only what repo-contract owns and enforces.
 - **Track drift with a bumped version marker instead of byte comparison.**
   Rejected: byte-exact equality on verbatim copies needs no marker to maintain
   and cannot fall out of sync with the files it describes. It is the mechanism
@@ -69,13 +69,13 @@ or a labeled override, never an invisible flag.
 
 ## Consequences
 
-- quality-gate is the single home for the tier-2 baseline: `init` distributes it,
+- repo-contract is the single home for the tier-2 baseline: `init` distributes it,
   `classify()` verifies it, `commit-hygiene.yml` mirrors it on CI, and the release
   cadence propagates changes. A repo wanting the hooks pulls in the package.
 - A consumer's local hook set can drift from the bundle, but only visibly:
   `classify()` reports it and `init --force` repairs it, with the git diff as the
   audit trail. There is no silent divergence.
-- Every opt-out is a reviewable `.quality-gate.json` entry carrying its own
+- Every opt-out is a reviewable `.repo-contract.json` entry carrying its own
   reason, and `--no-verify` is retired as the sanctioned escape in favor of that
   entry or an `override:commit-hygiene` label.
 - This ADR and dotfiles ADR 0002 must stay consistent: a change to which rules
