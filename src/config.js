@@ -1,4 +1,4 @@
-// Reader for the committed, repo-root `.quality-gate.json` (CONFIG_FILENAME):
+// Reader for the committed, repo-root `.repo-contract.json` (CONFIG_FILENAME):
 // the durable, reviewable home for enforcement opt-outs that used to live in
 // per-machine `git config hooks.*` (ADR 0002, orestes/dotfiles#52). Each opt-out
 // carries a machine-readable `reason` as a data field, not a comment, so a
@@ -29,7 +29,7 @@ import { CONFIG_FILENAME } from "./constants.js";
  * @property {Record<string, Override>} overrides
  */
 
-/** The config a repo with no `.quality-gate.json` behaves as: full enforcement. */
+/** The config a repo with no `.repo-contract.json` behaves as: full enforcement. */
 const emptyConfig = () => ({ overrides: {} });
 
 /**
@@ -101,7 +101,7 @@ export function parseConfig(raw, source = CONFIG_FILENAME) {
 }
 
 /**
- * Load `.quality-gate.json` from `cwd`. An absent file is not an error: it
+ * Load `.repo-contract.json` from `cwd`. An absent file is not an error: it
  * returns the empty config (full enforcement). Any other read error, or an
  * invalid file, propagates.
  * @param {string} [cwd] - Repo root to read from (defaults to `process.cwd()`).

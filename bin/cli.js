@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CLI entry for `npx github:orestes-dev/quality-gate <command>`.
+// CLI entry for `npx github:orestes-dev/repo-contract <command>`.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -12,7 +12,7 @@ import { sweep } from "../src/commands/sweep.js";
 
 /** Usage banner shared by the help path (stdout, exit 0) and the unknown-command path (stderr, exit 2). */
 const USAGE =
-  "usage: quality-gate <init|validate-issue|validate-pr|sweep>\n" +
+  "usage: repo-contract <init|validate-issue|validate-pr|sweep>\n" +
   "  init [--force]   scaffold the Issue Form + PR Form, their workflows, and the\n" +
   "                   repo-contract git hooks into this repo\n" +
   "                   (fails on drifted files; --force upgrades in place)\n" +
@@ -35,7 +35,7 @@ function cmdValidateIssue(args) {
   );
   if (!file) {
     console.error(
-      "usage: quality-gate validate-issue <file> [--title <title>]",
+      "usage: repo-contract validate-issue <file> [--title <title>]",
     );
     process.exit(2);
   }
@@ -61,7 +61,7 @@ function cmdValidatePr(args) {
     (a, i) => !a.startsWith("--") && (titleFlag === -1 || i !== titleFlag + 1),
   );
   if (!file) {
-    console.error("usage: quality-gate validate-pr <file> [--title <title>]");
+    console.error("usage: repo-contract validate-pr <file> [--title <title>]");
     process.exit(2);
   }
   const body = readFileSync(resolve(process.cwd(), file), "utf8");

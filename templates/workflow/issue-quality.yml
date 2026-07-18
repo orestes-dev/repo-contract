@@ -16,7 +16,7 @@ concurrency:
   group: issue-quality-${{ github.event.issue.number }}
   cancel-in-progress: true
 jobs:
-  quality-gate:
+  repo-contract:
     runs-on: ubuntu-latest
     # Content edits (opened/edited) always re-run the gate. Label events re-run
     # it only when a HUMAN touches a gate-relevant label: the override toggle, or
@@ -32,4 +32,4 @@ jobs:
        (github.event.label.name == 'override:issue-quality' ||
         startsWith(github.event.label.name, 'issue-quality:')))
     steps:
-      - uses: orestes-dev/quality-gate@main
+      - uses: orestes-dev/repo-contract@main

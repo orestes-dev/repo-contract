@@ -19,7 +19,7 @@ concurrency:
   group: pr-readiness-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  quality-gate:
+  repo-contract:
     runs-on: ubuntu-latest
     # Content edits (opened/edited/reopened) always re-run the gate. Label events
     # re-run it only when a HUMAN touches a gate-relevant label: the override
@@ -36,6 +36,6 @@ jobs:
        (github.event.label.name == 'override:pr-readiness' ||
         startsWith(github.event.label.name, 'pr-readiness:')))
     steps:
-      - uses: orestes-dev/quality-gate@main
+      - uses: orestes-dev/repo-contract@main
         with:
           object: pr

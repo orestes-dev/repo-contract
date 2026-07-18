@@ -8,7 +8,7 @@
 //   3. the PR head branch is not the default branch (pre-commit hook)
 //
 // Each rule mirrors its hook's per-repo opt-out, but read from the committed
-// `.quality-gate.json` (src/config.js) instead of per-machine `git config
+// `.repo-contract.json` (src/config.js) instead of per-machine `git config
 // hooks.*`, so the bypass is durable, reviewable, and reason-bearing (ADR 0002).
 // An opt-out relaxes to a pass whose message quotes the recorded reason, so the
 // scorecard shows both that the check was skipped and why.
@@ -83,7 +83,7 @@ function countAddedEmDashes(patch) {
 /**
  * Conventional Commits subject check across the PR's commits: every non-exempt
  * subject must open with `type(scope): summary`. Skipped (pass) when the repo
- * opted out via `skipConventionalCommits` in `.quality-gate.json`.
+ * opted out via `skipConventionalCommits` in `.repo-contract.json`.
  * @param {{sha: string, subject: string}[]} commits
  * @param {Config} config
  * @returns {Check}
@@ -119,7 +119,7 @@ function checkSubjects(commits, config) {
 /**
  * Em-dash check over the diff: no em dashes added on *.md/*.mdx lines. The
  * `allowEmDashes` opt-out skips it entirely; `maxAllowedEmDashes` sets a budget
- * (default 0), mirroring the pre-commit hook. Both read from `.quality-gate.json`.
+ * (default 0), mirroring the pre-commit hook. Both read from `.repo-contract.json`.
  * @param {{filename: string, patch: string}[]} files
  * @param {Config} config
  * @returns {Check}
@@ -198,13 +198,13 @@ function checkDefaultBranch(headRef, defaultBranch, config) {
  * Validate a PR's commit hygiene into a scorecard: the Conventional Commits
  * subject check leads, then the em-dash-in-diff check, then the default-branch
  * check. Each baseline rule mirrors its local hook and reads its opt-out from the
- * committed `.quality-gate.json` config.
+ * committed `.repo-contract.json` config.
  * @param {object} params
  * @param {{sha: string, subject: string}[]} [params.commits] - The PR's commits.
  * @param {{filename: string, patch: string}[]} [params.files] - The PR's changed files.
  * @param {string} [params.headRef] - The PR head branch name.
  * @param {string} [params.defaultBranch] - The base repo's default branch name.
- * @param {Config} [params.config] - The parsed `.quality-gate.json` opt-outs.
+ * @param {Config} [params.config] - The parsed `.repo-contract.json` opt-outs.
  * @returns {Scorecard}
  */
 export function validateCommits({

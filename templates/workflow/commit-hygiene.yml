@@ -19,7 +19,7 @@ concurrency:
   group: commit-hygiene-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  quality-gate:
+  repo-contract:
     runs-on: ubuntu-latest
     # Content edits (opened/edited/reopened) and new pushes (synchronize) always
     # re-run the gate, since the commits and diff it reads change on a push. Label
@@ -38,6 +38,6 @@ jobs:
        (github.event.label.name == 'override:commit-hygiene' ||
         startsWith(github.event.label.name, 'commit-hygiene:')))
     steps:
-      - uses: orestes-dev/quality-gate@main
+      - uses: orestes-dev/repo-contract@main
         with:
           object: commit

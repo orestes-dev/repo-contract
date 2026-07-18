@@ -45,7 +45,7 @@ export const commitGate = {
     const pr = await gh.getPullRequest(number);
     const commits = await gh.getPullRequestCommits(number);
     const files = await gh.getPullRequestFiles(number);
-    // The opt-outs are read from the consumer's checkout (`.quality-gate.json`
+    // The opt-outs are read from the consumer's checkout (`.repo-contract.json`
     // at the workspace root), the same file the local hooks consume.
     const config = loadConfig();
     return { ...pr, commits, files, config };

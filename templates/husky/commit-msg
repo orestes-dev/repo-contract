@@ -1,22 +1,22 @@
 #!/usr/bin/env sh
-# Repo-contract commit-msg hook, vendored by quality-gate `init` (ADR 0002,
+# Repo-contract commit-msg hook, vendored by repo-contract `init` (ADR 0002,
 # orestes/dotfiles#52). A committed file, so it runs where ~/.dotfiles is absent
 # (CI, containers, fresh worktrees). Depends only on POSIX sh, git, and jq
-# (jq only when .quality-gate.json exists), never on node_modules, so it runs
+# (jq only when .repo-contract.json exists), never on node_modules, so it runs
 # before `yarn install`. Husky executes it with `sh -e`; do not add bashisms.
 #
-# quality-gate owns this file byte-for-byte and drift-checks it: edit
+# repo-contract owns this file byte-for-byte and drift-checks it: edit
 # templates/husky/commit-msg upstream and re-run `init`, never patch in place.
-# Opt-outs live in the committed .quality-gate.json (never `git config hooks.*`).
+# Opt-outs live in the committed .repo-contract.json (never `git config hooks.*`).
 # Repo-specific commit-msg checks go in .husky/local/commit-msg, chained below.
 set -eu
 
-CONFIG=".quality-gate.json"
+CONFIG=".repo-contract.json"
 
 red() { printf '\033[31m%s\033[0m\n' "$*" >&2; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*" >&2; }
 
-# Populate OV_VALUE (the opt-out's JSON value) and OV_REASON from .quality-gate.json
+# Populate OV_VALUE (the opt-out's JSON value) and OV_REASON from .repo-contract.json
 # for the key named in $1. Returns 0 when the key is present, 1 otherwise. jq is
 # required only when the config file exists.
 OV_VALUE=""
@@ -82,7 +82,7 @@ if grep -v '^#' "$msg_file" | grep -qF '—'; then
 fi
 
 # Chain to an optional consumer-owned extension for repo-specific commit-msg
-# checks. quality-gate never writes .husky/local/, so it survives `init --force`.
+# checks. repo-contract never writes .husky/local/, so it survives `init --force`.
 if [ -r ".husky/local/commit-msg" ]; then
   sh -e ".husky/local/commit-msg" "$@"
 fi

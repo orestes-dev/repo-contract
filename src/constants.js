@@ -8,7 +8,7 @@ export const NO_RESPONSE = "_No response_";
 // The committed, repo-root config file the package reads for enforcement
 // opt-outs. JSON so it parses with `JSON.parse` (no added dependency) and stays
 // `jq`-queryable. Absent means full enforcement with no opt-outs.
-export const CONFIG_FILENAME = ".quality-gate.json";
+export const CONFIG_FILENAME = ".repo-contract.json";
 
 /**
  * Per-check outcome, worst-wins across a field's rules.
@@ -118,7 +118,7 @@ export const COMMIT_OVERRIDE_LABEL = "override:commit-hygiene";
 // scorecards without any gate adopting another's comment.
 export const COMMIT_COMMENT_MARKER = "<!-- commit-hygiene-gate -->";
 
-// Enforcement opt-out keys read from `.quality-gate.json` (src/config.js). They
+// Enforcement opt-out keys read from `.repo-contract.json` (src/config.js). They
 // mirror the `git config hooks.*` opt-outs of the local baseline hooks
 // (~/.dotfiles/git-hooks/), so the CI mirror relaxes on the same axes and the
 // bypass stays legible: a committed, reviewable data field with a required

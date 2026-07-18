@@ -3,7 +3,7 @@
 //   1. Drift: this repo's own `.husky/` copies stay byte-identical to the
 //      canonical `templates/husky/` bundle, and `init` drops + repairs them.
 //   2. Behavior: the shipped hooks block a bad commit and honor a
-//      `.quality-gate.json` opt-out, quoting its reason (ADR 0002).
+//      `.repo-contract.json` opt-out, quoting its reason (ADR 0002).
 // The hooks are POSIX sh + git + jq only; husky runs them with `sh -e`, so the
 // tests invoke them the same way rather than through a real husky install.
 
@@ -158,7 +158,7 @@ test(
       initInto(dir);
       const reason = "legacy import commits predate the convention";
       writeFileSync(
-        join(dir, ".quality-gate.json"),
+        join(dir, ".repo-contract.json"),
         JSON.stringify({
           overrides: { skipConventionalCommits: { value: true, reason } },
         }),
@@ -170,7 +170,7 @@ test(
       assert.match(stderr, new RegExp(reason));
       assert.match(
         stderr,
-        /skipConventionalCommits opt-out from \.quality-gate\.json \(true\)/,
+        /skipConventionalCommits opt-out from \.repo-contract\.json \(true\)/,
       );
     });
   },
@@ -220,7 +220,7 @@ test(
       git("switch", "-c", "feat/x");
       const reason = "AGENTS.md is generated and contains one em-dash";
       writeFileSync(
-        join(dir, ".quality-gate.json"),
+        join(dir, ".repo-contract.json"),
         JSON.stringify({
           overrides: { maxAllowedEmDashes: { value: 1, reason } },
         }),
@@ -232,7 +232,7 @@ test(
       assert.match(stderr, new RegExp(reason));
       assert.match(
         stderr,
-        /maxAllowedEmDashes opt-out from \.quality-gate\.json \(1\)/,
+        /maxAllowedEmDashes opt-out from \.repo-contract\.json \(1\)/,
       );
     });
   },

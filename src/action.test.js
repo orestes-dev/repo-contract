@@ -263,7 +263,7 @@ test("the two workflows agree on their shared trigger, permissions, concurrency,
   // Concurrency and the job `if:` filter must be byte-identical.
   assert.deepEqual(consumer.concurrency, dogfood.concurrency);
   assert.equal(
-    consumer.jobs["quality-gate"].if,
-    dogfood.jobs["quality-gate"].if,
+    consumer.jobs["repo-contract"].if,
+    dogfood.jobs["repo-contract"].if,
   );
 });

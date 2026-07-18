@@ -11,7 +11,7 @@ concurrency:
   group: issue-quality-${{ github.event.issue.number }}
   cancel-in-progress: true
 jobs:
-  quality-gate:
+  repo-contract:
     runs-on: ubuntu-latest
     # See templates/workflow.yml: content events always run; label events run
     # only when a human touches the override or an issue-quality:* label, so the

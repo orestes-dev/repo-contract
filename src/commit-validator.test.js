@@ -24,7 +24,7 @@ const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
 // character the gate forbids in Markdown diffs.
 const EM = "\u2014";
 
-// The empty config a repo with no `.quality-gate.json` behaves as: full
+// The empty config a repo with no `.repo-contract.json` behaves as: full
 // enforcement, no opt-outs.
 const noConfig = { overrides: {} };
 
@@ -453,8 +453,8 @@ test("the two commit-hygiene workflows agree on trigger, permissions, concurrenc
   assert.equal(dogfood.permissions.contents, "read");
   assert.deepEqual(consumer.concurrency, dogfood.concurrency);
   assert.equal(
-    consumer.jobs["quality-gate"].if,
-    dogfood.jobs["quality-gate"].if,
+    consumer.jobs["repo-contract"].if,
+    dogfood.jobs["repo-contract"].if,
   );
 });
 

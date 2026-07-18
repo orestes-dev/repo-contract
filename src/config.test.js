@@ -12,7 +12,7 @@ import {
 } from "./config.js";
 import { CONFIG_FILENAME } from "./constants.js";
 
-// A scratch repo root with an optional `.quality-gate.json`, auto-cleaned.
+// A scratch repo root with an optional `.repo-contract.json`, auto-cleaned.
 function withRepo(contents) {
   const dir = mkdtempSync(join(tmpdir(), "qg-config-"));
   if (contents !== undefined) {

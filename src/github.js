@@ -74,7 +74,7 @@ export class GitHub {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
       "Content-Type": "application/json",
-      "User-Agent": "quality-gate",
+      "User-Agent": "repo-contract",
     };
   }
 

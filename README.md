@@ -1,6 +1,6 @@
-# quality-gate
+# repo-contract
 
-A deterministic quality gate for GitHub issues and pull requests, so work lands
+The deterministic repository contract for GitHub issues, pull requests, and commits, so work lands
 well-scoped and actionable. Structural checks only: title format, presence,
 length, checklist count, size enum. The **issue gate** is advisory (labels +
 scorecard, never fails CI); the **PR gate** and the **commit-hygiene gate** both
@@ -18,7 +18,7 @@ core; see the [PR gate](#pull-request-gate), the
   `issue-quality:warning` (non-blocking), `issue-quality:pass`, a filterable
   signal for downstream automation.
 - **Manual override**: a labelled escape hatch with a required written rationale.
-- **One-command opt-in**: `npx github:orestes-dev/quality-gate init` drops
+- **One-command opt-in**: `npx github:orestes-dev/repo-contract init` drops
   the Issue Form + PR Form, their workflows, and the repo-contract git hooks,
   and prints a Suggested rule to paste into your agent rules; no per-repo config.
 - **Vendored git hooks**: `init` ships committed husky hooks enforcing the
@@ -115,7 +115,7 @@ pickup-readiness into a cleared label.
 ## Opting a repo in
 
 ```sh
-npx github:orestes-dev/quality-gate init
+npx github:orestes-dev/repo-contract init
 ```
 
 Run from the repo root. This drops seven files, which together are the opt-in:
@@ -142,7 +142,7 @@ snippet pointing at the issue and PR Author guides and at the pre-flight step,
 for you to paste into your own agent-rules file (`AGENTS.md`, `CLAUDE.md`, editor
 rules). `init` writes it to no file, so it never clobbers a file it does not own.
 
-The snippet names no subcommand or flag, and defers to `quality-gate --help` for
+The snippet names no subcommand or flag, and defers to `repo-contract --help` for
 the command surface. A pasted copy is beyond this repo's reach forever after, so
 anything it pins about the CLI rots silently the next time the CLI moves. `--help`
 is generated from the live CLI and cannot go stale.
@@ -195,7 +195,7 @@ Opt-in is going-forward only: an existing issue is validated the next time it is
 edited, so an untouched backlog stays unlabeled. To backfill on demand, run:
 
 ```sh
-npx github:orestes-dev/quality-gate sweep
+npx github:orestes-dev/repo-contract sweep
 ```
 
 `sweep` labels + scorecards every **open** issue that has no `issue-quality:*`
@@ -222,7 +222,7 @@ Before `gh issue create`, run the same validator on a draft file. Pass
 `--title` to also check the title against the Conventional Commits format:
 
 ```sh
-npx github:orestes-dev/quality-gate validate-issue path/to/issue-body.md \
+npx github:orestes-dev/repo-contract validate-issue path/to/issue-body.md \
   --title "feat(search): debounce the query input"
 ```
 
@@ -315,7 +315,7 @@ Before opening a PR, run the same structural checks on a draft body file with
 `validate-pr`, the PR-side mirror of `validate-issue`:
 
 ```sh
-npx github:orestes-dev/quality-gate validate-pr path/to/pr-body.md \
+npx github:orestes-dev/repo-contract validate-pr path/to/pr-body.md \
   --title "feat(search): debounce the query input"
 ```
 
@@ -342,7 +342,7 @@ rules across the PR:
 - **Default branch**: the PR is not opened from the default branch. Opt out with
   `allowDefaultBranchCommits`.
 
-Each rule reads its opt-out from the committed `.quality-gate.json` (see
+Each rule reads its opt-out from the committed `.repo-contract.json` (see
 [Enforcement opt-outs](#enforcement-opt-outs)), not per-machine `git config`, so
 a relaxation is durable and reviewable; a relaxed check passes with a scorecard
 line quoting the recorded reason. Any un-relaxed violation **hard-fails CI**,
@@ -363,7 +363,7 @@ and needs `permissions: pull-requests: write` and `contents: read`.
 ## Enforcement opt-outs
 
 Some enforcement (the shipped commit hooks) can be relaxed per repo through a
-committed `.quality-gate.json` at the repo root. It replaces the per-machine
+committed `.repo-contract.json` at the repo root. It replaces the per-machine
 `git config hooks.*` flags, which were invisible, per-machine, and survived no
 clone (ADR 0002, orestes/dotfiles#52). An opt-out here is durable, shows up in a
 diff, and carries the reason it exists.
@@ -403,7 +403,7 @@ Keys:
 Query one reason on the shell:
 
 ```sh
-jq -r '.overrides.maxAllowedEmDashes.reason' .quality-gate.json
+jq -r '.overrides.maxAllowedEmDashes.reason' .repo-contract.json
 ```
 
 Two consumers read these opt-outs: the [commit-hygiene gate](#commit-hygiene-gate)
@@ -426,13 +426,13 @@ every consumer must obey, including CI and contributors with no `~/.dotfiles`
 
 They are committed files, not a delegation to a global path, so they run where
 `~/.dotfiles` is absent: CI runners, containers, fresh worktrees. They depend
-only on `sh`, `git`, and `jq` (and `jq` only when a `.quality-gate.json` exists),
+only on `sh`, `git`, and `jq` (and `jq` only when a `.repo-contract.json` exists),
 never on `node_modules`, so they run before `yarn install`. Each reads its
-opt-outs from the committed `.quality-gate.json` via `jq` and quotes the
+opt-outs from the committed `.repo-contract.json` via `jq` and quotes the
 triggered opt-out's `reason` in its output, so a bypass is legible where it takes
 effect.
 
-quality-gate owns both files byte-for-byte and drift-checks them with the same
+repo-contract owns both files byte-for-byte and drift-checks them with the same
 `init`/`--force` machinery as the Forms and workflows: a tampered or stale hook
 is reported `stale` on a plain `init` and repaired in place by `init --force`.
 Edit the canonical `templates/husky/*` upstream and re-run `init`; never patch a
@@ -445,7 +445,7 @@ not this hook's concern. Put them in `.husky/local/commit-msg` or
 
 ## Notes
 
-- **`@main`, unpinned.** Consumers reference `orestes-dev/quality-gate@main`,
+- **`@main`, unpinned.** Consumers reference `orestes-dev/repo-contract@main`,
   so rule changes propagate on the next run with no per-repo bump, accepting
   that a bad change affects every opted-in repo at once.
 - **Fixed schema.** No per-repo config or inputs, so the labels mean the same

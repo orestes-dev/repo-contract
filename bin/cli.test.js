@@ -87,7 +87,7 @@ test("init prints the Suggested rule naming both Forms and deferring to --help, 
     assert.match(stdout, /Suggested rule/);
     assert.match(stdout, /\.template\.issue\.md/);
     assert.match(stdout, /\.template\.pr\.md/);
-    assert.match(stdout, /quality-gate --help/);
+    assert.match(stdout, /repo-contract --help/);
     // Stdout-only: no rules file is written into the repo.
     assert.ok(!existsSync(join(dir, "AGENTS.md")));
     assert.ok(!existsSync(join(dir, "CLAUDE.md")));
@@ -192,7 +192,7 @@ test("validate-issue exits 2 on a usage error when no file is given", () => {
   withTempDir((dir) => {
     const { status, stderr } = runCli(dir, "validate-issue");
     assert.equal(status, 2);
-    assert.match(stderr, /usage: quality-gate validate-issue <file>/);
+    assert.match(stderr, /usage: repo-contract validate-issue <file>/);
   });
 });
 
@@ -204,7 +204,7 @@ test("validate is no longer a command and hits the usage-error path", () => {
     assert.equal(status, 2);
     assert.match(
       stderr,
-      /usage: quality-gate <init\|validate-issue\|validate-pr\|sweep>/,
+      /usage: repo-contract <init\|validate-issue\|validate-pr\|sweep>/,
     );
   });
 });
@@ -246,7 +246,7 @@ test("validate-pr exits 2 on a usage error when no file is given", () => {
   withTempDir((dir) => {
     const { status, stderr } = runCli(dir, "validate-pr");
     assert.equal(status, 2);
-    assert.match(stderr, /usage: quality-gate validate-pr <file>/);
+    assert.match(stderr, /usage: repo-contract validate-pr <file>/);
   });
 });
 
@@ -256,7 +256,7 @@ test("help prints usage to stdout and exits 0", () => {
     assert.equal(status, 0, `${arg} should exit 0`);
     assert.match(
       stdout,
-      /usage: quality-gate <init\|validate-issue\|validate-pr\|sweep>/,
+      /usage: repo-contract <init\|validate-issue\|validate-pr\|sweep>/,
     );
     assert.equal(stderr, "");
   }
@@ -267,7 +267,7 @@ test("an unknown command prints usage to stderr and exits 2", () => {
   assert.equal(status, 2);
   assert.match(
     stderr,
-    /usage: quality-gate <init\|validate-issue\|validate-pr\|sweep>/,
+    /usage: repo-contract <init\|validate-issue\|validate-pr\|sweep>/,
   );
   assert.equal(stdout, "");
 });

@@ -20,7 +20,7 @@ const ROOT = resolve(HERE, "..", "..");
 // agent-facing root `.template.pr.md`. Because the two are identical bytes, PR
 // authoring guidance stays in HTML comments so it never prints into the posted
 // PR body (ADR 0003). The git hooks are shipped all-in (no per-feature selection)
-// and read their opt-outs from the committed `.quality-gate.json` via jq.
+// and read their opt-outs from the committed `.repo-contract.json` via jq.
 const TEMPLATES = [
   {
     // Consumer's copy is UI-only; the gate reads structure from its own checkout.
@@ -104,7 +104,7 @@ prints this and writes it nowhere):
   \`gh pr create\`, and fix any hard errors before creating the object. Run the
   CLI's help to discover the command for each:
 
-      npx github:orestes-dev/quality-gate --help`;
+      npx github:orestes-dev/repo-contract --help`;
 
 /**
  * Classify each template's destination against the bundled source by exact
@@ -178,7 +178,7 @@ export function init(argv = []) {
   console.log(
     "\nDone. Commit these files to opt this repo into the issue quality and PR readiness gates.\n" +
       "The issue gate only labels issues going forward. To backfill labels + scorecards " +
-      "onto the existing open backlog, run: quality-gate sweep",
+      "onto the existing open backlog, run: repo-contract sweep",
   );
 
   console.log(`\n${SUGGESTED_RULE}`);

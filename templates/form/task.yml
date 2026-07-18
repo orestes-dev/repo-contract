@@ -13,7 +13,7 @@ body:
     attributes:
       value: |
         Fill in the required fields; the optional ones sharpen an issue for
-        whoever (human or agent) picks it up. A structural quality gate runs
+        whoever (human or agent) picks it up. A structural check runs
         automatically and will flag issues that are missing context, acceptance
         criteria, or that are too large to land as one issue.
 

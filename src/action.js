@@ -35,7 +35,7 @@ import { issueGate } from "./gates/issue.js";
  * @property {string} [defaultBranch] - The base repo's default branch name
  *   (commit gate only).
  * @property {import('./config.js').Config} [config] - The parsed
- *   `.quality-gate.json` opt-outs (commit gate only).
+ *   `.repo-contract.json` opt-outs (commit gate only).
  */
 
 /**

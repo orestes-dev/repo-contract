@@ -1,8 +1,8 @@
-name: Issue Quality Gate
+name: Repo Contract
 description: >-
-  Deterministic quality gate for GitHub issues. Applies a single
-  issue-quality:failing/warning/pass label and
-  posts/updates an explanatory scorecard comment.
+  Enforces the repository contract on GitHub issues, pull requests, and
+  commits. Applies a single namespaced failing/warning/pass label per object
+  and posts/updates an explanatory scorecard comment.
 author: Orestes Carracedo
 inputs:
   object:
@@ -31,7 +31,7 @@ runs:
       id: deps
       shell: bash
       working-directory: ${{ github.action_path }}
-      run: echo "key=${RUNNER_OS}-quality-gate-$(shasum yarn.lock | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      run: echo "key=${RUNNER_OS}-repo-contract-$(shasum yarn.lock | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
     - name: Restore dependency cache
       uses: actions/cache@v6
       with:
@@ -44,7 +44,7 @@ runs:
     # One composite action, three entry points: the `object` input selects the
     # command file (issue -> action.js, pr -> pr.js, commit -> commit.js) behind
     # the shared core.
-    - name: Run quality gate
+    - name: Run gate
       shell: bash
       run: node "$GITHUB_ACTION_PATH/src/commands/${COMMAND}.js"
       env:

@@ -755,9 +755,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"quality-gate@workspace:.":
+"repo-contract@workspace:.":
   version: 0.0.0-use.local
-  resolution: "quality-gate@workspace:."
+  resolution: "repo-contract@workspace:."
   dependencies:
     "@eslint/js": "npm:^10.0.1"
     "@types/node": "npm:^22"
@@ -769,7 +769,7 @@ __metadata:
     typescript: "npm:^5"
     yaml: "npm:^2.9.0"
   bin:
-    quality-gate: bin/cli.js
+    repo-contract: bin/cli.js
   languageName: unknown
   linkType: soft
 

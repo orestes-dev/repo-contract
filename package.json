@@ -1,8 +1,8 @@
 {
-  "name": "quality-gate",
+  "name": "repo-contract",
   "version": "0.1.0",
   "private": true,
-  "description": "Deterministic quality gate for GitHub issues and pull requests so work lands well-scoped and actionable.",
+  "description": "The canonical repository contract for GitHub issues, pull requests, and commits, enforced by CI gates and vendored git hooks so work lands well-scoped and actionable.",
   "author": "Orestes Carracedo <orestes@orestes.io>",
   "type": "module",
   "packageManager": "yarn@4.16.0",

@@ -14,7 +14,7 @@ concurrency:
   group: pr-readiness-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  quality-gate:
+  repo-contract:
     runs-on: ubuntu-latest
     # See templates/pr-workflow.yml: content events always run; label events run
     # only when a human touches the override or a pr-readiness:* label, so the gate
