@@ -1,6 +1,6 @@
 // The gate's internal constants: labels, statuses, and the markers/headings the
 // action keys off. The enforced RULES and title format are a separate tuning
-// surface; STRUCTURE lives in the Issue Form.
+// surface; STRUCTURE is code-owned in rules.js, not the Issue Form (ADR 0003).
 
 // GitHub renders an empty optional field as this literal. Treat it as absent.
 export const NO_RESPONSE = "_No response_";

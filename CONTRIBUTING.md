@@ -64,9 +64,13 @@ reader.
 
 ## Conventions
 
-Structure is read from the [Issue Form](.github/ISSUE_TEMPLATE/task.yml) at
-runtime; rules it can't express live in [`src/rules.js`](src/rules.js), keyed 1:1
-to the form fields. Drift tests pin that correspondence, the [README](README.md)
+Structure is owned by code: the ordered field descriptor in
+[`src/rules.js`](src/rules.js) holds id, heading, order, type, required, options,
+and constraints together, and the validator reads it directly. Nothing reads the
+[Issue Form](.github/ISSUE_TEMPLATE/task.yml) at runtime; it and the Author guide
+are drift-checked renderings of that source (see
+[ADR 0003](docs/adr/0003-code-owned-structure-drift-checked-renderings.md)). Drift
+tests pin those renderings, the [README](README.md)
 against the rules, and each workflow's dogfood copy under
 [`.github/workflows/`](.github/workflows/) against its template under
 [`templates/workflow/`](templates/workflow/)
