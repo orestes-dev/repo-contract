@@ -19,8 +19,12 @@ core; see the [PR gate](#pull-request-gate), the
   signal for downstream automation.
 - **Manual override**: a labelled escape hatch with a required written rationale.
 - **One-command opt-in**: `npx github:orestes-dev/quality-gate init` drops
-  the Issue Form + PR Form and their workflows, and prints a Suggested rule to
-  paste into your agent rules; no per-repo config.
+  the Issue Form + PR Form, their workflows, and the repo-contract git hooks,
+  and prints a Suggested rule to paste into your agent rules; no per-repo config.
+- **Vendored git hooks**: `init` ships committed husky hooks enforcing the
+  repo-contract baseline (Conventional Commits, em-dash policy, no default-branch
+  commits) with `jq`/`git`/`sh` only, so they run in CI, containers, and fresh
+  worktrees, and are drift-checked like every other rendering.
 - **Shared pre-flight validator**: run the same checks locally before
   `gh issue create`.
 
@@ -389,7 +393,7 @@ Keys:
   object. Omit it (or the whole file) for full enforcement. Any other top-level
   key is reserved: the file may grow to hold further package settings.
 - **`value`**: what the check keys off. A boolean for an on/off opt-out (e.g.
-  `allowDefaultBranchCommits`, `allowEmDashes`, `skipBranchNameCheck`), or a
+  `allowDefaultBranchCommits`, `allowEmDashes`, `skipConventionalCommits`), or a
   number for a budget (e.g. `maxAllowedEmDashes`).
 - **`reason`**: required and non-empty. Why the opt-out exists. It is a data
   field, not a comment, so a triggered check quotes it in its output (the em-dash
@@ -403,10 +407,41 @@ jq -r '.overrides.maxAllowedEmDashes.reason' .quality-gate.json
 ```
 
 Two consumers read these opt-outs: the [commit-hygiene gate](#commit-hygiene-gate)
-in CI (`skipConventionalCommits`, `maxAllowedEmDashes`, `allowEmDashes`,
-`allowDefaultBranchCommits`), and the local commit hooks, which ship separately.
-Both key off the same committed file, so a repo's baseline relaxations are the
-same on a developer's machine and in CI.
+in CI and the [repo-contract git hooks](#repo-contract-git-hooks) locally, keyed off
+the same four (`skipConventionalCommits`, `maxAllowedEmDashes`, `allowEmDashes`,
+`allowDefaultBranchCommits`). Both read the same committed file, so a repo's
+baseline relaxations are identical on a developer's machine and in CI.
+
+## Repo-contract git hooks
+
+`init` vendors two committed husky hooks that enforce the repo-contract baseline
+every consumer must obey, including CI and contributors with no `~/.dotfiles`
+(ADR 0002, orestes/dotfiles#52):
+
+- **`.husky/commit-msg`**: the subject matches Conventional Commits, and the
+  message carries no em-dash. Opt-outs: `skipConventionalCommits`, `allowEmDashes`.
+- **`.husky/pre-commit`**: no commit lands on the default branch, and staged
+  `*.md`/`*.mdx` carry no em-dash beyond `maxAllowedEmDashes`. Opt-outs:
+  `allowDefaultBranchCommits`, `maxAllowedEmDashes` (a budget).
+
+They are committed files, not a delegation to a global path, so they run where
+`~/.dotfiles` is absent: CI runners, containers, fresh worktrees. They depend
+only on `sh`, `git`, and `jq` (and `jq` only when a `.quality-gate.json` exists),
+never on `node_modules`, so they run before `yarn install`. Each reads its
+opt-outs from the committed `.quality-gate.json` via `jq` and quotes the
+triggered opt-out's `reason` in its output, so a bypass is legible where it takes
+effect.
+
+quality-gate owns both files byte-for-byte and drift-checks them with the same
+`init`/`--force` machinery as the Forms and workflows: a tampered or stale hook
+is reported `stale` on a plain `init` and repaired in place by `init --force`.
+Edit the canonical `templates/husky/*` upstream and re-run `init`; never patch a
+dropped copy in place, or the next `init` flags it as drift.
+
+Repo-specific checks (lint-staged, gitleaks, build) are tier-3 project checks,
+not this hook's concern. Put them in `.husky/local/commit-msg` or
+`.husky/local/pre-commit`; the shipped hooks chain to those if present, and
+`init` never writes under `.husky/local/`, so they survive `init --force`.
 
 ## Notes
 
@@ -429,12 +464,14 @@ rendering of that structure.
 `templates/form/task.yml` (the Issue Form), `templates/markdown/issue.md` (the
 issue Author guide), `templates/markdown/pr.md` (the PR Form, written to both the
 GitHub template path and the root PR Author guide), and
-and the thin workflows `templates/workflow/issue-quality.yml`,
-`pr-readiness.yml`, and `commit-hygiene.yml`. This repo's own `.github/` and root
-`.template.{issue,pr}.md` are a dogfood instance of that bundle: the applied Forms
-and Author guides are drift-tested byte-identical to the canonical ones, and each
-dogfood workflow is drift-tested to agree with its consumer template on every
-shared field (they differ only on `uses: ./` vs `@main`).
+the thin workflows `templates/workflow/issue-quality.yml`, `pr-readiness.yml`, and
+`commit-hygiene.yml`, and `templates/husky/{commit-msg,pre-commit}` (the
+repo-contract git hooks). This repo's own `.github/`, root
+`.template.{issue,pr}.md`, and `.husky/{commit-msg,pre-commit}` are a dogfood
+instance of that bundle: the applied Forms, Author guides, and hooks are
+drift-tested byte-identical to the canonical ones, and each dogfood workflow is
+drift-tested to agree with its consumer template on every shared field (they
+differ only on `uses: ./` vs `@main`).
 
 [`CONTEXT.md`](CONTEXT.md) is the domain glossary:
 Issue Form, structure, field, section, rule, check, scorecard, override.

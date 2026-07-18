@@ -1,0 +1,90 @@
+#!/usr/bin/env sh
+# Repo-contract commit-msg hook, vendored by quality-gate `init` (ADR 0002,
+# orestes/dotfiles#52). A committed file, so it runs where ~/.dotfiles is absent
+# (CI, containers, fresh worktrees). Depends only on POSIX sh, git, and jq
+# (jq only when .quality-gate.json exists), never on node_modules, so it runs
+# before `yarn install`. Husky executes it with `sh -e`; do not add bashisms.
+#
+# quality-gate owns this file byte-for-byte and drift-checks it: edit
+# templates/husky/commit-msg upstream and re-run `init`, never patch in place.
+# Opt-outs live in the committed .quality-gate.json (never `git config hooks.*`).
+# Repo-specific commit-msg checks go in .husky/local/commit-msg, chained below.
+set -eu
+
+CONFIG=".quality-gate.json"
+
+red() { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+yellow() { printf '\033[33m%s\033[0m\n' "$*" >&2; }
+
+# Populate OV_VALUE (the opt-out's JSON value) and OV_REASON from .quality-gate.json
+# for the key named in $1. Returns 0 when the key is present, 1 otherwise. jq is
+# required only when the config file exists.
+OV_VALUE=""
+OV_REASON=""
+read_override() {
+  OV_VALUE=""
+  OV_REASON=""
+  [ -f "$CONFIG" ] || return 1
+  if ! command -v jq >/dev/null 2>&1; then
+    red "commit-msg: $CONFIG exists but jq is not installed; cannot read opt-outs. Install jq."
+    exit 1
+  fi
+  entry=$(jq -c --arg k "$1" '(.overrides // {})[$k] // empty' "$CONFIG") || {
+    red "commit-msg: $CONFIG is not valid JSON."
+    exit 1
+  }
+  [ -n "$entry" ] || return 1
+  OV_VALUE=$(printf '%s' "$entry" | jq -c '.value')
+  OV_REASON=$(printf '%s' "$entry" | jq -r '.reason')
+  return 0
+}
+
+# Render a triggered opt-out, quoting its reason verbatim so the bypass is legible
+# where it takes effect. Mirrors src/config.js formatOverride().
+format_override() {
+  printf '%s opt-out from %s (%s): %s' "$1" "$CONFIG" "$OV_VALUE" "$OV_REASON"
+}
+
+msg_file=$1
+[ -r "$msg_file" ] || exit 0
+
+# The subject is the first non-empty, non-comment line.
+subject=$(grep -m1 -E -v '^[[:space:]]*$|^#' "$msg_file" || true)
+
+# Skip generated subjects (merge, revert, fixup, squash).
+case "$subject" in
+  "Merge "* | "Revert "* | "fixup! "* | "squash! "*) exit 0 ;;
+esac
+
+# 1. Conventional Commits subject.
+if printf '%s' "$subject" | grep -qE '^(feat|fix|perf|refactor|test|build|chore|docs|style|ci|revert)(\([^)]+\))?!?: .+'; then
+  :
+elif read_override skipConventionalCommits && [ "$OV_VALUE" = "true" ]; then
+  yellow "commit-msg: Conventional Commits check bypassed. $(format_override skipConventionalCommits)"
+else
+  red "commit-msg: subject doesn't match Conventional Commits format."
+  red "  Got:      $subject"
+  red "  Expected: <type>(<scope>)?!?: <description>"
+  red "  Types:    feat fix perf refactor test build chore docs style ci revert"
+  red "  Opt out:  add overrides.skipConventionalCommits {\"value\":true,\"reason\":...} to $CONFIG"
+  exit 1
+fi
+
+# 2. No em dashes in the commit message.
+if grep -v '^#' "$msg_file" | grep -qF '—'; then
+  if read_override allowEmDashes && [ "$OV_VALUE" = "true" ]; then
+    yellow "commit-msg: em-dash check bypassed. $(format_override allowEmDashes)"
+  else
+    red "commit-msg: em-dash ('—') found in commit message. Use ',' '.' '()' ':' instead."
+    red "  Opt out: add overrides.allowEmDashes {\"value\":true,\"reason\":...} to $CONFIG"
+    exit 1
+  fi
+fi
+
+# Chain to an optional consumer-owned extension for repo-specific commit-msg
+# checks. quality-gate never writes .husky/local/, so it survives `init --force`.
+if [ -r ".husky/local/commit-msg" ]; then
+  sh -e ".husky/local/commit-msg" "$@"
+fi
+
+exit 0

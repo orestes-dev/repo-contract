@@ -1,6 +1,7 @@
-// `init`: scaffold the Issue Form + PR Form, the issue and PR Author guides, and
-// their thin workflows into the current repo, upgrade drifted copies in place
-// under `--force`, and print the Suggested rule to stdout (written to no file).
+// `init`: scaffold the Issue Form + PR Form, the issue and PR Author guides,
+// their thin workflows, and the vendored repo-contract git hooks into the current
+// repo, upgrade drifted copies in place under `--force`, and print the Suggested
+// rule to stdout (written to no file).
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -9,13 +10,17 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..", "..");
 
-// `templates/` is the canonical bundle for both Forms and workflows; this repo's
-// `.github/` copies and root `.template.*.md` guides are a dogfood instance
-// drift-checked to match it (ADR 0003). The canonical Markdown PR Form is
-// `templates/markdown/pr.md`; `init` writes it byte-for-byte to both the
-// GitHub-rendered `.github/PULL_REQUEST_TEMPLATE.md` and the agent-facing root
-// `.template.pr.md`. Because the two are identical bytes, PR authoring guidance
-// stays in HTML comments so it never prints into the posted PR body (ADR 0003).
+// `templates/` is the canonical bundle for the Forms, workflows, and repo-contract
+// git hooks; this repo's `.github/` copies, root `.template.*.md` guides, and
+// `.husky/` hooks are a dogfood instance drift-checked to match it (ADR 0003,
+// ADR 0002). Every destination is a verbatim byte-for-byte copy of its source,
+// which is what makes exact equality a precise drift signal. The canonical
+// Markdown PR Form is `templates/markdown/pr.md`; `init` writes it byte-for-byte
+// to both the GitHub-rendered `.github/PULL_REQUEST_TEMPLATE.md` and the
+// agent-facing root `.template.pr.md`. Because the two are identical bytes, PR
+// authoring guidance stays in HTML comments so it never prints into the posted
+// PR body (ADR 0003). The git hooks are shipped all-in (no per-feature selection)
+// and read their opt-outs from the committed `.quality-gate.json` via jq.
 const TEMPLATES = [
   {
     // Consumer's copy is UI-only; the gate reads structure from its own checkout.
@@ -53,6 +58,21 @@ const TEMPLATES = [
     // fills in.
     from: join(ROOT, "templates", "workflow", "commit-hygiene.yml"),
     to: join(".github", "workflows", "commit-hygiene.yml"),
+  },
+  {
+    // Repo-contract commit-msg hook (Conventional Commits subject, em-dash
+    // policy). Vendored as a committed husky hook so it enforces where
+    // `~/.dotfiles` is absent (CI, containers, fresh worktrees); jq/git/sh only,
+    // no node_modules, so it runs before `yarn install` (ADR 0002).
+    from: join(ROOT, "templates", "husky", "commit-msg"),
+    to: join(".husky", "commit-msg"),
+  },
+  {
+    // Repo-contract pre-commit hook (no default-branch commits, em-dash policy
+    // in staged Markdown). Same vendoring rationale as commit-msg. Repo-specific
+    // checks belong in .husky/local/pre-commit, which `init` never writes.
+    from: join(ROOT, "templates", "husky", "pre-commit"),
+    to: join(".husky", "pre-commit"),
   },
 ];
 
@@ -102,8 +122,8 @@ function classify() {
 }
 
 /**
- * Copy the Issue Form, PR Form, and their workflows into the current working
- * directory, then print the Suggested rule to stdout.
+ * Copy the Issue Form, PR Form, their workflows, and the repo-contract git hooks
+ * into the current working directory, then print the Suggested rule to stdout.
  *
  * Absent files are created. Byte-identical files are left untouched (`init` is
  * idempotent). A drifted file — stale or locally customized — makes a plain run
