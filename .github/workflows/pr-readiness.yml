@@ -10,9 +10,12 @@ permissions:
   # Required to read the labels of same-repo issues this PR closes
   # (closingIssuesReferences) for the linked-issue readiness check.
   issues: read
+# Serialize per PR but queue-and-drain rather than cancel: a skipping
+# incidental-label run must never cancel an in-flight validating run (see
+# templates/workflow/pr-readiness.yml for the full rationale).
 concurrency:
   group: pr-readiness-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   repo-contract:
     runs-on: ubuntu-latest

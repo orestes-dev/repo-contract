@@ -7,9 +7,12 @@ on:
 permissions:
   issues: write
   contents: read # actions/checkout via `uses: ./` needs it on private repos
+# Serialize per issue but queue-and-drain rather than cancel: a skipping
+# incidental-label run must never cancel an in-flight validating run (see
+# templates/workflow/issue-quality.yml for the full rationale).
 concurrency:
   group: issue-quality-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   repo-contract:
     runs-on: ubuntu-latest

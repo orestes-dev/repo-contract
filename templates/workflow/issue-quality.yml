@@ -10,11 +10,15 @@ on:
     types: [opened, edited, labeled, unlabeled]
 permissions:
   issues: write
-# Serialize per issue so rapid edits do not race on labels or the comment; a
-# newer run cancels an in-flight older one.
+# Serialize per issue so rapid edits do not race on labels or the comment. Runs
+# queue and drain in order rather than cancelling: an incidental (non-gate) label
+# event, whose job `if:` is false and which therefore skips, must never cancel an
+# in-flight run that would write a verdict. run() is idempotent (it updates the
+# single checklist comment and re-sets the label), so serial redundant runs
+# converge on the last-writer state without double-posting or corruption.
 concurrency:
   group: issue-quality-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   repo-contract:
     runs-on: ubuntu-latest

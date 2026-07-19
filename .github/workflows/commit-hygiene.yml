@@ -7,9 +7,12 @@ on:
 permissions:
   pull-requests: write
   contents: read # actions/checkout via `uses: ./` needs it on private repos
+# Serialize per PR but queue-and-drain rather than cancel: a skipping
+# incidental-label run must never cancel an in-flight validating run (see
+# templates/workflow/commit-hygiene.yml for the full rationale).
 concurrency:
   group: commit-hygiene-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   repo-contract:
     runs-on: ubuntu-latest
