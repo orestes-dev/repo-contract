@@ -4,7 +4,14 @@
 // mis-split the body.
 
 import { FIELDS, RULES, CONVENTIONAL_COMMIT_TYPES } from "./rules.js";
-import { NO_RESPONSE, LABEL, STATUS, OVERRIDE_HEADING } from "./constants.js";
+import {
+  NO_RESPONSE,
+  LABEL,
+  STATUS,
+  OVERRIDE_HEADING,
+  REJECTION_HEADING,
+  WONTFIX_LABEL,
+} from "./constants.js";
 
 /**
  * @typedef {import('./rules.js').Field} Field
@@ -38,7 +45,16 @@ const CHECKLIST_PREFIXES = BULLETS.flatMap((bullet) =>
 const KNOWN_HEADINGS = new Set([
   ...FIELDS.map((f) => f.heading),
   OVERRIDE_HEADING,
+  REJECTION_HEADING,
 ]);
+
+// A Rejection's reason is held to the same substance floor as Context: below it,
+// the section exists but records nothing recallable.
+const REJECTION_MIN_LENGTH = /** @type {number} */ (RULES.context.minLength);
+
+// The Rejection check's scorecard key. Not a field id (it has no `rules.js`
+// entry), so it is named here rather than derived from the descriptor.
+const REJECTION_KEY = "rejection";
 
 // A title must open with a Conventional Commits type, an optional `(scope)`, an
 // optional `!` breaking-change marker, then `: ` and a non-empty summary.
@@ -356,20 +372,65 @@ export function checkTitle(title) {
 }
 
 /**
+ * A Rejection's `## Rejection rationale`: absent or empty is a hard error
+ * (applying `wontfix` is a deliberate act, so recording nothing is a real
+ * defect), present but below the Context floor is a warning. Like every other
+ * check, the message states the rule identically across statuses; only the icon
+ * carries the verdict.
+ * @param {Record<string, string>} sections
+ * @returns {Check}
+ */
+function checkRejection(sections) {
+  const core = `\`${WONTFIX_LABEL}\` owes a reason: at least ${REJECTION_MIN_LENGTH} characters`;
+  const value = (sections[REJECTION_HEADING] ?? "").trim();
+  if (value === "") {
+    return check(REJECTION_KEY, REJECTION_HEADING, STATUS.FAIL, core);
+  }
+  if (value.length < REJECTION_MIN_LENGTH) {
+    return check(
+      REJECTION_KEY,
+      REJECTION_HEADING,
+      STATUS.WARN,
+      `${core} — say why it was declined and what would reopen the question`,
+    );
+  }
+  return check(REJECTION_KEY, REJECTION_HEADING, STATUS.PASS, core);
+}
+
+/**
+ * Label names from a GitHub label list, which the REST API renders as objects
+ * and some payloads as bare strings.
+ * @param {Array<string|{name: string}>} labels
+ * @returns {string[]}
+ */
+const labelNames = (labels) =>
+  labels.map((label) => (typeof label === "string" ? label : label.name));
+
+/**
  * Validate a body against the `FIELDS` descriptor joined to RULES. Returns a
  * per-check scorecard, one line per field in descriptor order. When `title` is given
  * (CI always passes it; the CLI only when `--title` is supplied), a title check
  * is prepended so the scorecard leads with it.
+ *
+ * A `wontfix` issue is a Rejection: it is checked for a `## Rejection rationale`
+ * on top of the work-item checks, never instead of them, since a declined issue
+ * whose original what/why is unreadable is no more useful than one with no
+ * reason recorded.
  * @param {string} body
  * @param {string} [title] - The issue title, or undefined to skip the check.
+ * @param {Array<string|{name: string}>} [labels] - The issue's labels; the
+ *   `wontfix` label alone selects the Rejection check.
  * @returns {Scorecard}
  */
-export function validate(body, title) {
+export function validate(body, title, labels = []) {
   const sections = parseSections(body);
   const checks = FIELDS.map((field) =>
     checkField(sections, field, RULES[field.id]),
   );
   if (title !== undefined) checks.unshift(checkTitle(title));
+  if (labelNames(labels).includes(WONTFIX_LABEL)) {
+    checks.push(checkRejection(sections));
+  }
   return { checks };
 }
 

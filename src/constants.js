@@ -48,6 +48,26 @@ export const OVERRIDE_LABEL = "override:issue-quality";
 // Shared by both gates: the `## <heading>` a bypass rationale lives under.
 export const OVERRIDE_HEADING = "Override rationale";
 
+// A Rejection: an issue carrying this human-applied label records work
+// deliberately declined. The label is the sole selector (GitHub's close
+// `state_reason` is bookkeeping the gate does not police, and a `wontfix` issue
+// left open is still a Rejection).
+export const WONTFIX_LABEL = "wontfix";
+// The `## <heading>` a Rejection's reason lives under. Shaped like
+// OVERRIDE_HEADING, not like a Field: conditional on a label, absent from
+// rules.js, the Issue Form, and the Author guide, since nobody writes it when
+// opening an issue.
+export const REJECTION_HEADING = "Rejection rationale";
+
+// GitHub's own default `wontfix` metadata, adopted verbatim so `init`'s
+// reconcile is a no-op in a repo that never recoloured the label.
+export const WONTFIX_LABEL_META = {
+  [WONTFIX_LABEL]: {
+    color: "ffffff",
+    description: "This will not be worked on",
+  },
+};
+
 // Marker embedded in the bot comment so it can be found and updated in place.
 export const COMMENT_MARKER = "<!-- issue-quality-gate -->";
 

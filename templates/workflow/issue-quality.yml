@@ -23,17 +23,20 @@ jobs:
   repo-contract:
     runs-on: ubuntu-latest
     # Content edits (opened/edited) always re-run the gate. Label events re-run
-    # it only when a HUMAN touches a gate-relevant label: the override toggle, or
-    # an issue-quality:* label hand-edited (so a manual removal self-heals). The
-    # gate writes its own labels with GITHUB_TOKEN, and GitHub suppresses those
-    # events from triggering runs; the sender check is defense-in-depth for
-    # consumers who wire in a PAT or App token, where that suppression does not
-    # apply. run() is diff-based, so any redundant trigger is a no-op.
+    # it only when a HUMAN touches a gate-relevant label: the override toggle, an
+    # issue-quality:* label hand-edited (so a manual removal self-heals), or
+    # `wontfix`, which turns the issue into a Rejection and adds the rationale
+    # check. The gate writes its own labels with GITHUB_TOKEN, and GitHub
+    # suppresses those events from triggering runs; the sender check is
+    # defense-in-depth for consumers who wire in a PAT or App token, where that
+    # suppression does not apply. run() is diff-based, so any redundant trigger
+    # is a no-op.
     if: >-
       github.event.action == 'opened' ||
       github.event.action == 'edited' ||
       (github.event.sender.login != 'github-actions[bot]' &&
        (github.event.label.name == 'override:issue-quality' ||
+        github.event.label.name == 'wontfix' ||
         startsWith(github.event.label.name, 'issue-quality:')))
     steps:
       - uses: orestes-dev/repo-contract@main

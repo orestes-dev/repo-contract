@@ -17,13 +17,15 @@ jobs:
   repo-contract:
     runs-on: ubuntu-latest
     # See templates/workflow.yml: content events always run; label events run
-    # only when a human touches the override or an issue-quality:* label, so the
-    # gate never re-triggers itself but manual quality-label edits self-heal.
+    # only when a human touches the override, an issue-quality:* label, or
+    # `wontfix`, so the gate never re-triggers itself but manual quality-label
+    # edits self-heal and a Rejection is graded the moment it is declared.
     if: >-
       github.event.action == 'opened' ||
       github.event.action == 'edited' ||
       (github.event.sender.login != 'github-actions[bot]' &&
        (github.event.label.name == 'override:issue-quality' ||
+        github.event.label.name == 'wontfix' ||
         startsWith(github.event.label.name, 'issue-quality:')))
     steps:
       - uses: actions/checkout@v5

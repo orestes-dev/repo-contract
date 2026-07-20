@@ -15,7 +15,13 @@ import {
   checkTitle,
 } from "./validator.js";
 import { FIELDS, RULES } from "./rules.js";
-import { LABEL, STATUS } from "./constants.js";
+import {
+  LABEL,
+  STATUS,
+  WONTFIX_LABEL,
+  REJECTION_HEADING,
+} from "./constants.js";
+import { issueGate } from "./gates/issue.js";
 import { goodBody as good } from "./fixtures.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -403,6 +409,101 @@ test("a required-but-empty field states its rule, never the word missing", () =>
   const context = checkFor(validate(body), "context");
   assert.equal(context.status, STATUS.FAIL);
   assert.equal(context.message, "30–1500 characters");
+});
+
+// --- Rejection: a `wontfix` issue owes a written reason ---
+
+// The label is the sole selector, so every fixture here is an OPEN issue; no
+// close `state_reason` is read anywhere in the codebase.
+const REJECTED = [WONTFIX_LABEL];
+const withRationale = (rationale) =>
+  `${good}\n## ${REJECTION_HEADING}\n\n${rationale}\n`;
+const RATIONALE =
+  "Rejected 2026-07-20. The cost outweighs the benefit at current volume. Revisit if traffic triples.";
+
+test("a wontfix issue with a written rationale passes", () => {
+  const result = validate(withRationale(RATIONALE), undefined, REJECTED);
+  const rejection = checkFor(result, "rejection");
+  assert.equal(rejection.status, STATUS.PASS);
+  assert.equal(rejection.label, REJECTION_HEADING);
+  assert.equal(labelFor(result), LABEL.PASS);
+});
+
+test("a wontfix issue with no rationale section is a hard error", () => {
+  const result = validate(good, undefined, REJECTED);
+  assert.equal(checkFor(result, "rejection").status, STATUS.FAIL);
+  assert.equal(labelFor(result), LABEL.FAILING);
+});
+
+test("a wontfix issue with an empty rationale section is a hard error", () => {
+  const result = validate(withRationale("   "), undefined, REJECTED);
+  assert.equal(checkFor(result, "rejection").status, STATUS.FAIL);
+  assert.equal(labelFor(result), LABEL.FAILING);
+});
+
+test("a wontfix rationale below the Context floor is a warning", () => {
+  const thin = "Not worth it.";
+  assert.ok(thin.length < RULES.context.minLength);
+  const result = validate(withRationale(thin), undefined, REJECTED);
+  assert.equal(checkFor(result, "rejection").status, STATUS.WARN);
+  assert.equal(labelFor(result), LABEL.WARNING);
+});
+
+// Additive, not a separate validation path: a declined issue whose original
+// what/why is unreadable is no more useful than one with no reason recorded.
+test("the work-item checks still run and contribute on a wontfix issue", () => {
+  const result = validate(withRationale(RATIONALE), undefined, REJECTED);
+  for (const field of FIELDS) {
+    assert.ok(checkFor(result, field.id), `missing check for ${field.id}`);
+  }
+
+  const thinContext = withRationale(RATIONALE).replace(
+    "The dashboard refetches everything on every keystroke, which is slow. We want it debounced so typing stays responsive.",
+    "Too slow.",
+  );
+  const degraded = validate(thinContext, undefined, REJECTED);
+  assert.equal(checkFor(degraded, "context").status, STATUS.FAIL);
+  assert.equal(checkFor(degraded, "rejection").status, STATUS.PASS);
+  assert.equal(labelFor(degraded), LABEL.FAILING);
+});
+
+test("an issue without the wontfix label is graded on the unchanged path", () => {
+  const result = validate(good, undefined, ["issue-quality:pass"]);
+  assert.equal(checkFor(result, "rejection"), undefined);
+  assert.deepEqual(
+    result.checks.map((c) => c.key),
+    FIELDS.map((f) => f.id),
+  );
+  assert.equal(labelFor(result), LABEL.PASS);
+  // A rationale written without the label is inert, never a check of its own.
+  assert.equal(
+    checkFor(validate(withRationale(RATIONALE)), "rejection"),
+    undefined,
+  );
+});
+
+test("labels are read as REST label objects as well as bare strings", () => {
+  const result = validate(good, undefined, [{ name: WONTFIX_LABEL }]);
+  assert.equal(checkFor(result, "rejection").status, STATUS.FAIL);
+});
+
+// The seam: the issue gate hands the whole object's labels to the validator, and
+// stays advisory whatever the verdict (docs/adr/0001).
+test("the issue gate passes labels through and stays advisory", () => {
+  assert.equal(issueGate.hardFail, false);
+  const object = {
+    body: good,
+    title: "feat(x): decline the thing",
+    labels: [{ name: WONTFIX_LABEL }],
+  };
+  assert.equal(
+    checkFor(issueGate.validate(object), "rejection").status,
+    STATUS.FAIL,
+  );
+  assert.equal(
+    checkFor(issueGate.validate({ ...object, labels: [] }), "rejection"),
+    undefined,
+  );
 });
 
 // RULES and the FIELDS descriptor must be in bijection: every rule maps to a

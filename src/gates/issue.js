@@ -32,5 +32,9 @@ export const issueGate = {
   hardFail: false,
   getNumber: (event) => event.issue?.number,
   getObject: (gh, number) => gh.getIssue(number),
-  validate: (object) => validate(object.body || "", object.title),
+  // Labels ride along so the validator can grade a `wontfix` issue as a
+  // Rejection; `gate.validate` already receives the whole object, so this is the
+  // only seam change.
+  validate: (object) =>
+    validate(object.body || "", object.title, object.labels ?? []),
 };

@@ -56,15 +56,18 @@ file means full enforcement with no opt-outs.
 ## Labels
 
 `init` owns the fixed label schema: the three gate triples (`issue-quality:*`,
-`pr-readiness:*`, `commit-hygiene:*`) and the three override labels
-(`override:issue-quality`, `override:pr-readiness`, `override:commit-hygiene`).
-Every label's colour and description live in code
+`pr-readiness:*`, `commit-hygiene:*`), the three override labels
+(`override:issue-quality`, `override:pr-readiness`, `override:commit-hygiene`),
+and `wontfix`. Every label's colour and description live in code
 ([`src/constants.js`](src/constants.js): `LABEL_META`, `PR_LABEL_META`,
-`COMMIT_LABEL_META`, `OVERRIDE_LABEL_META`), so `init` can both **create** any
-missing label and **reconcile** one whose colour or description has drifted,
-reporting `created` / `repaired` / `ok` per label the way it reports per file.
-The override labels are materialized here rather than lazily: a gate run never
-applies one (a human does), so nothing would ever create them on demand.
+`COMMIT_LABEL_META`, `OVERRIDE_LABEL_META`, `WONTFIX_LABEL_META`), so `init` can
+both **create** any missing label and **reconcile** one whose colour or
+description has drifted, reporting `created` / `repaired` / `ok` per label the
+way it reports per file. The override labels are materialized here rather than
+lazily: a gate run never applies one (a human does), so nothing would ever create
+them on demand. `wontfix` is materialized for the same reason, and adopts
+GitHub's own default colour and description so the reconcile is a no-op in a repo
+that never recoloured it.
 
 The label step discovers credentials and repo context the way `sweep` does
 (`gh auth token`, `gh repo view`), but softly: with no credentials or repo it is

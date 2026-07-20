@@ -70,9 +70,11 @@ This drops seven files, which together are the opt-in:
 Commit all seven. `init` also vendors two [git hooks](#git-hooks) under `.husky/`.
 
 `init` then creates the fixed label schema in the repo: the three gate triples
-(`issue-quality:*`, `pr-readiness:*`, `commit-hygiene:*`) and the three override
+(`issue-quality:*`, `pr-readiness:*`, `commit-hygiene:*`), the three override
 labels (`override:issue-quality`, `override:pr-readiness`, `override:commit-hygiene`),
-each with a code-owned colour and description. Re-running `init` repairs any of
+and `wontfix` (which marks an issue as a [rejection](#rejections)), each with a
+code-owned colour and description. `wontfix` carries GitHub's own default colour
+and description, so a repo that never recoloured it sees no change. Re-running `init` repairs any of
 them whose colour or description has drifted, so the labels mean the same thing
 in every repo. This step needs credentials and repo context (discovered from
 `gh auth token` and `gh repo view`); with neither it is reported as skipped and
@@ -149,6 +151,18 @@ an issue without one.
 - ✅ **Size**: XS, S, or M lands as one issue
 ```
 
+### Rejections
+
+An issue labelled `wontfix` records work deliberately declined, and owes a
+written `## Rejection rationale` section saying why it was declined and what
+would reopen the question. The label is the only signal: an open `wontfix` issue
+counts, and the close reason is never read. The check is added to the usual field
+checks rather than replacing them, since a declined issue whose original what and
+why are unreadable is no more useful than one with no reason recorded. A missing
+or empty rationale is an error; a rationale too thin to say anything is a
+warning. Nobody writes this section when opening an issue, so it appears in
+neither the Issue Form nor the Author guide.
+
 ### Override
 
 Set `override:issue-quality` **and** add a non-empty `## Override rationale`
@@ -160,7 +174,8 @@ warning to write one.
 ### When CI runs
 
 CI runs on `issues: opened` / `edited` always, and on `labeled` / `unlabeled` only
-when a human touches `override:issue-quality` or an `issue-quality:*` label. The
+when a human touches `override:issue-quality`, `wontfix`, or an `issue-quality:*`
+label. The
 gate's own label writes (as the CI bot) are excluded, so it never re-triggers
 itself; a human hand-editing a quality label re-runs it, so manual changes
 self-heal.

@@ -14,20 +14,24 @@ import {
   PR_LABEL_META,
   COMMIT_LABEL_META,
   OVERRIDE_LABEL_META,
+  WONTFIX_LABEL_META,
 } from "../constants.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..", "..");
 
 // The fixed label schema `init` materializes and reconciles: the three gate
-// triples plus the three override labels, each with code-owned metadata
-// (`constants.js`). Flattened to `{ name, color, description }` so the label step
-// is one loop, mirroring the file loop above it.
+// triples, the three override labels, and `wontfix` (the Rejection selector),
+// each with code-owned metadata (`constants.js`). `wontfix` carries GitHub's own
+// default metadata, so reconciling it is a no-op in a repo that never recoloured
+// it. Flattened to `{ name, color, description }` so the label step is one loop,
+// mirroring the file loop above it.
 export const GATE_LABELS = [
   LABEL_META,
   PR_LABEL_META,
   COMMIT_LABEL_META,
   OVERRIDE_LABEL_META,
+  WONTFIX_LABEL_META,
 ].flatMap((meta) =>
   Object.entries(meta).map(([name, { color, description }]) => ({
     name,
@@ -217,8 +221,8 @@ export async function ensureGateLabels({ client, log }) {
  * the files that differ. Warns (but proceeds) when not at a repo root. The
  * Suggested rule is printed on success and written to no file.
  *
- * After the files, reconcile the fixed label schema (the three gate triples plus
- * the three override labels): create any missing label, repair any whose
+ * After the files, reconcile the fixed label schema (the three gate triples, the
+ * three override labels, and `wontfix`): create any missing label, repair any whose
  * color/description drifted. This needs credentials and repo context, discovered
  * the way `sweep` does (`gh auth token`, `gh repo view`); with neither the label
  * step is reported as skipped and the file scaffolding still stands.

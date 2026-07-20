@@ -14,6 +14,7 @@ import {
   OVERRIDE_LABEL,
   OVERRIDE_HEADING,
   STATUS,
+  WONTFIX_LABEL,
 } from "./constants.js";
 import { goodBody } from "./fixtures.js";
 
@@ -307,6 +308,10 @@ test("both workflows couple the trigger filter to the schema strings", () => {
     assert.ok(
       yaml.includes(`github.event.sender.login != '${GATE_SENDER}'`),
       `${rel} is missing the human-sender guard`,
+    );
+    assert.ok(
+      yaml.includes(`github.event.label.name == '${WONTFIX_LABEL}'`),
+      `${rel} is missing the wontfix (Rejection) trigger guard`,
     );
   }
 });
