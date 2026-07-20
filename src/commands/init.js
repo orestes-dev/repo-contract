@@ -1,11 +1,18 @@
 // `init`: scaffold the Issue Form + PR Form, the issue and PR Author guides,
 // their thin workflows, and the vendored repo-contract git hooks into the current
-// repo, upgrade drifted copies in place under `--force`, and print the Suggested
-// rule to stdout (written to no file).
+// repo, activate those hooks by pointing `core.hooksPath` at them, upgrade
+// drifted copies in place under `--force`, and print the Suggested rule to
+// stdout (written to no file).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  chmodSync,
+} from "node:fs";
 import { execFileSync } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { GitHub } from "../github.js";
@@ -91,11 +98,14 @@ const TEMPLATES = [
   },
   {
     // Repo-contract commit-msg hook (Conventional Commits subject, em-dash
-    // policy). Vendored as a committed husky hook so it enforces where
-    // `~/.dotfiles` is absent (CI, containers, fresh worktrees); jq/git/sh only,
-    // no node_modules, so it runs before `yarn install` (ADR 0002).
+    // policy). Vendored as a committed hook so it enforces where `~/.dotfiles`
+    // is absent (CI, containers, fresh worktrees); jq/git/sh only, no
+    // node_modules, so it runs before `yarn install` (ADR 0002, ADR 0012). Git
+    // executes it directly via `core.hooksPath`, which is why it is written
+    // executable.
     from: join(ROOT, "templates", "husky", "commit-msg"),
     to: join(".husky", "commit-msg"),
+    exec: true,
   },
   {
     // Repo-contract pre-commit hook (no default-branch commits, em-dash policy
@@ -103,6 +113,7 @@ const TEMPLATES = [
     // checks belong in .husky/local/pre-commit, which `init` never writes.
     from: join(ROOT, "templates", "husky", "pre-commit"),
     to: join(".husky", "pre-commit"),
+    exec: true,
   },
 ];
 
@@ -112,6 +123,27 @@ const TEMPLATES = [
 const ABSENT = "absent";
 const OK = "ok";
 const DRIFT = "drift";
+
+// Activation (ADR 0012). Vendoring a hook file only guarantees it can *run*;
+// git runs it only once `core.hooksPath` points at the directory holding it.
+// `init` sets that itself so a checkout that never ran a package-manager install
+// (fresh clone, linked worktree, container) still enforces the baseline.
+//
+// The value is deliberately RELATIVE. `core.hooksPath` lives in the shared
+// `.git/config`, so an absolute path pins every linked worktree to one fixed
+// checkout's hooks; git resolves a relative one against the worktree root, so
+// each worktree runs the hooks committed on its own branch (githooks(5): git
+// chdirs to the worktree root before invoking a hook).
+//
+// `.husky` (not husky's generated `.husky/_` shim) is the target: the vendored
+// hooks are executable POSIX sh, so git can exec them directly with no shim, no
+// `node_modules`, and no install step. The directory keeps its conventional
+// name; husky itself is no longer required to activate them.
+export const HOOKS_PATH = ".husky";
+
+// Git skips a hook that is not executable, emitting only a hint. Vendored hooks
+// are written 0755 so activation cannot fail that quietly.
+const HOOK_MODE = 0o755;
 
 // Agent-guidance snippet printed to stdout for the operator to paste into their
 // own agent-rules file (AGENTS.md, CLAUDE.md, editor rules). `init` never writes
@@ -139,16 +171,98 @@ prints this and writes it nowhere):
 /**
  * Classify each template's destination against the bundled source by exact
  * byte comparison. Verbatim copies make equality an exact drift signal.
- * @returns {{to: string, dest: string, desired: string, state: string}[]}
+ * @returns {{to: string, dest: string, desired: string, exec: boolean, state: string}[]}
  */
 function classify() {
-  return TEMPLATES.map(({ from, to }) => {
+  return TEMPLATES.map(({ from, to, exec = false }) => {
     const dest = resolve(process.cwd(), to);
     const desired = readFileSync(from, "utf8");
-    if (!existsSync(dest)) return { to, dest, desired, state: ABSENT };
+    if (!existsSync(dest)) return { to, dest, desired, exec, state: ABSENT };
     const current = readFileSync(dest, "utf8");
-    return { to, dest, desired, state: current === desired ? OK : DRIFT };
+    return {
+      to,
+      dest,
+      desired,
+      exec,
+      state: current === desired ? OK : DRIFT,
+    };
   });
+}
+
+/**
+ * Read `core.hooksPath` as it applies to this checkout, or `""` when unset.
+ * `git config --get` exits 1 on a missing key, which is not an error here.
+ * @param {string} cwd
+ * @returns {string}
+ */
+function readHooksPath(cwd) {
+  try {
+    return execFileSync("git", ["config", "--get", "core.hooksPath"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Point `core.hooksPath` at the vendored hook directory, so the files `init`
+ * just wrote actually run (ADR 0012). Sets the relative `.husky`, and repairs
+ * any other value, including husky's `.husky/_` shim and any absolute path that
+ * would make every linked worktree run one fixed checkout's hooks.
+ *
+ * Reports the outcome as one line, the way the file and label loops do. Outside
+ * a git repository there is nothing to configure: say so loudly (the hooks are
+ * inert until someone sets it) and leave the exit code alone, since scaffolding
+ * into a directory before `git init` is legitimate. A `git config` that fails
+ * where a repository *does* exist is fatal: silently leaving enforcement off is
+ * the exact failure mode this step exists to remove.
+ * @param {object} params
+ * @param {string} [params.cwd]
+ * @param {(line: string) => void} params.log
+ * @returns {string} `skipped`, `ok`, `created`, or `repaired`.
+ */
+export function ensureHooksPath({ cwd = process.cwd(), log }) {
+  if (!existsSync(resolve(cwd, ".git"))) {
+    log(
+      `skip     core.hooksPath (no git repository here). The vendored hooks will\n` +
+        `         not run until you set it: git config core.hooksPath ${HOOKS_PATH}`,
+    );
+    return "skipped";
+  }
+
+  const current = readHooksPath(cwd);
+  if (current === HOOKS_PATH) {
+    log(`ok       core.hooksPath=${HOOKS_PATH}`);
+    return "ok";
+  }
+
+  try {
+    execFileSync("git", ["config", "core.hooksPath", HOOKS_PATH], {
+      cwd,
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+  } catch (error) {
+    console.error(
+      `\nerror: could not set core.hooksPath to ${HOOKS_PATH} (${error instanceof Error ? error.message : String(error)}).\n` +
+        "The vendored hooks are on disk but git will not run them, so the commit " +
+        "baseline is NOT enforced in this checkout. Fix the git config, or run " +
+        `\`git config core.hooksPath ${HOOKS_PATH}\` by hand, and re-run init.`,
+    );
+    process.exit(1);
+  }
+
+  if (current === "") {
+    log(`create   core.hooksPath=${HOOKS_PATH}`);
+    return "created";
+  }
+  const why = isAbsolute(current)
+    ? "absolute, so every linked worktree ran this one checkout's hooks"
+    : "did not point at the vendored hooks";
+  log(`repair   core.hooksPath=${HOOKS_PATH} (was '${current}': ${why})`);
+  return "repaired";
 }
 
 /**
@@ -221,8 +335,14 @@ export async function ensureGateLabels({ client, log }) {
  * the files that differ. Warns (but proceeds) when not at a repo root. The
  * Suggested rule is printed on success and written to no file.
  *
- * After the files, reconcile the fixed label schema (the three gate triples, the
- * three override labels, and `wontfix`): create any missing label, repair any whose
+ * After the files, activate them: each vendored hook is written executable and
+ * `core.hooksPath` is set to the relative `.husky`, repairing any other value
+ * (ADR 0012). That is what makes a checkout which never ran a package-manager
+ * install enforce the baseline, and what keeps a linked worktree on the hooks
+ * committed to its own branch.
+ *
+ * Then reconcile the fixed label schema (the three gate triples, the three
+ * override labels, and `wontfix`): create any missing label, repair any whose
  * color/description drifted. This needs credentials and repo context, discovered
  * the way `sweep` does (`gh auth token`, `gh repo view`); with neither the label
  * step is reported as skipped and the file scaffolding still stands.
@@ -261,15 +381,22 @@ export async function init(argv = []) {
     process.exit(1);
   }
 
-  for (const { to, dest, desired, state } of entries) {
-    if (state === OK) {
-      console.log(`ok     ${to}`);
-      continue;
+  for (const { to, dest, desired, exec, state } of entries) {
+    if (state !== OK) {
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, desired);
     }
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, desired);
-    console.log(`${state === ABSENT ? "create" : "update"} ${to}`);
+    // Mode is not part of the byte comparison, so re-assert it even on `ok`:
+    // git silently skips (hints about) a hook it cannot execute, and a copy
+    // that lost its executable bit would disable enforcement without a word.
+    if (exec) chmodSync(dest, HOOK_MODE);
+    console.log(
+      `${state === OK ? "ok    " : state === ABSENT ? "create" : "update"} ${to}`,
+    );
   }
+
+  console.log("\nActivation:");
+  const activation = ensureHooksPath({ log: (line) => console.log(line) });
 
   console.log("\nLabels:");
   await ensureGateLabels({
@@ -277,8 +404,21 @@ export async function init(argv = []) {
     log: (line) => console.log(line),
   });
 
+  // The hook paragraph reports what actually happened: claiming the hooks are
+  // live where activation was skipped would restate the bug this step fixes.
+  const hooksNote =
+    activation === "skipped"
+      ? `The git hooks are NOT active: there is no git repository here yet. Run \`git init\` and ` +
+        `then \`git config core.hooksPath ${HOOKS_PATH}\` (or re-run this command).\n`
+      : `The git hooks are live in this checkout now (core.hooksPath=${HOOKS_PATH}, a relative value, ` +
+        "so each linked worktree runs the hooks committed on its own branch).\n";
+
   console.log(
-    "\nDone. Commit these files to opt this repo into the issue quality and PR readiness gates.\n" +
+    `\nDone. Commit these files to opt this repo into the issue quality and PR readiness gates.\n` +
+      hooksNote +
+      "core.hooksPath is per-clone git config, never committed: run this command once in every " +
+      "fresh clone or worktree, or the hooks sit on disk unread. CI keeps the un-bypassable copy " +
+      "of the same rules in the commit-hygiene gate.\n" +
       "The issue gate only labels issues going forward. To backfill labels + scorecards " +
       "onto the existing open backlog, run: repo-contract sweep",
   );

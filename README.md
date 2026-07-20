@@ -10,13 +10,13 @@ every time, and reports each verdict as a label plus a scorecard comment.
 Three gates, a CLI, and a set of vendored git hooks, all driven by one shared
 core (`src/rules.js`).
 
-| What                                        | Kind                 | Blocks merge? | Namespace                                           |
-| ------------------------------------------- | -------------------- | ------------- | --------------------------------------------------- |
-| [Issue quality gate](#issue-quality-gate)   | GitHub Action        | No (advisory) | `issue-quality:*`                                   |
-| [Pull request gate](#pull-request-gate)     | GitHub Action        | Yes           | `pr-readiness:*`                                    |
-| [Commit-hygiene gate](#commit-hygiene-gate) | GitHub Action        | Yes           | `commit-hygiene:*`                                  |
-| [CLI](#the-cli)                             | `npx` command        | n/a           | `init` / `validate-issue` / `validate-pr` / `sweep` |
-| [Git hooks](#git-hooks)                     | Vendored husky hooks | Local commit  | reads `.repo-contract.json`                         |
+| What                                        | Kind               | Blocks merge? | Namespace                                           |
+| ------------------------------------------- | ------------------ | ------------- | --------------------------------------------------- |
+| [Issue quality gate](#issue-quality-gate)   | GitHub Action      | No (advisory) | `issue-quality:*`                                   |
+| [Pull request gate](#pull-request-gate)     | GitHub Action      | Yes           | `pr-readiness:*`                                    |
+| [Commit-hygiene gate](#commit-hygiene-gate) | GitHub Action      | Yes           | `commit-hygiene:*`                                  |
+| [CLI](#the-cli)                             | `npx` command      | n/a           | `init` / `validate-issue` / `validate-pr` / `sweep` |
+| [Git hooks](#git-hooks)                     | Vendored git hooks | Local commit  | reads `.repo-contract.json`                         |
 
 - **Issue quality gate**: labels + a scorecard on every issue. Advisory: it never
   fails CI, it just marks the issue `issue-quality:{pass,warning,failing}`.
@@ -27,8 +27,9 @@ core (`src/rules.js`).
 - **CLI**: `init` scaffolds the whole bundle into a repo; `validate-issue` /
   `validate-pr` run the same checks locally before you open the object; `sweep`
   backfills labels across an existing backlog.
-- **Git hooks**: committed husky hooks that enforce the same baseline as the
-  commit-hygiene gate, locally, with `sh` + `git` + `jq` only.
+- **Git hooks**: committed hooks that enforce the same baseline as the
+  commit-hygiene gate, locally, with `sh` + `git` + `jq` only. `init` activates
+  them in the checkout it runs in; no husky and no install required.
 
 Common threads across all three gates:
 
@@ -67,7 +68,8 @@ This drops seven files, which together are the opt-in:
   at `@main` for the commit-hygiene gate (merge-blocking). No Form or Author guide:
   it reads the PR's commits and diff, not a body the author fills in.
 
-Commit all seven. `init` also vendors two [git hooks](#git-hooks) under `.husky/`.
+Commit all seven. `init` also vendors two [git hooks](#git-hooks) under `.husky/`
+and activates them in this checkout by setting `core.hooksPath`.
 
 `init` then creates the fixed label schema in the repo: the three gate triples
 (`issue-quality:*`, `pr-readiness:*`, `commit-hygiene:*`), the three override
@@ -272,8 +274,8 @@ the labels of same-repo issues the PR closes (`closingIssuesReferences`). Withou
 The merge-blocking mirror of the local [git hooks](#git-hooks). It runs the same
 core over a pull request on `pull_request` events (including `synchronize`, so a
 push re-runs it). It is the CI mirror of the repo-contract baseline the git hooks
-enforce, which `--no-verify` bypasses and which is absent entirely where a repo
-displaces `core.hooksPath`. The gate makes that baseline **un-silenceable rather
+enforce, which `--no-verify` bypasses and which is absent entirely in a checkout
+where nobody ran `init` to set `core.hooksPath`. The gate makes that baseline **un-silenceable rather
 than un-bypassable**: always overridable, never invisible (ADR 0002,
 orestes/dotfiles#52). It checks three rules across the PR:
 
@@ -465,7 +467,7 @@ relaxations are identical on a developer's machine and in CI.
 
 ## Git hooks
 
-`init` vendors two committed husky hooks that enforce the repo-contract baseline
+`init` vendors two committed git hooks that enforce the repo-contract baseline
 every consumer must obey, including CI and contributors with no `~/.dotfiles`
 (ADR 0002, orestes/dotfiles#52):
 
@@ -481,6 +483,30 @@ on `sh`, `git`, and `jq` (and `jq` only when a `.repo-contract.json` exists), ne
 on `node_modules`, so they run before `yarn install`. Each reads its opt-outs from
 the committed `.repo-contract.json` via `jq` and quotes the triggered opt-out's
 `reason` in its output, so a bypass is legible where it takes effect.
+
+### Activating them
+
+Git runs a hook only when `core.hooksPath` points at it, and that setting is
+per-clone git config which no repository can commit. So `init` sets it: it writes
+both hooks executable and points `core.hooksPath` at `.husky`, reporting the step
+as `create`, `repair`, or `ok`. Git then executes the committed files directly,
+with no husky shim, no `node_modules`, and no package-manager install. Where a
+repository exists and the setting cannot be written, `init` exits non-zero and
+says the baseline is not enforced; hooks that quietly do nothing are the failure
+this replaces (ADR 0012).
+
+The value is deliberately relative. `core.hooksPath` lives in the shared
+`.git/config` that every linked worktree reads, so an absolute path pins them all
+to one fixed checkout's hooks, and a worktree on another branch runs rules it
+never committed. `.husky` resolves against each worktree's own root instead, so
+every worktree runs its own branch's hooks. `init` rewrites an absolute value it
+finds, and moves husky's generated `.husky/_` shim path onto `.husky` as well.
+
+Run `init` once per clone. A checkout where nobody ran it has the hook files on
+disk and no local enforcement, which nothing local can detect; the
+[commit-hygiene gate](#commit-hygiene-gate) is the un-bypassable copy of the same
+rules in CI. To activate without the CLI:
+`git config core.hooksPath .husky`.
 
 repo-contract owns both files byte-for-byte and drift-checks them with the same
 `init`/`--force` machinery as the Forms and workflows: a tampered or stale hook is

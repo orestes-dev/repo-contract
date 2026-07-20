@@ -25,6 +25,16 @@ Ownership means three things, all already in the code:
   and in worktrees or containers that never installed. Hooks ship all-in with no
   per-feature selection; repo-specific checks chain through `.husky/local/`,
   which `init` never writes.
+- **`init` also activates them.** A hook file that travels with the repo still
+  needs `core.hooksPath` pointing at it, which is per-clone git config and cannot
+  be committed. `ensureHooksPath()` sets the relative value `.husky` (so linked
+  worktrees run their own branch's hooks) and writes each hook executable, so a
+  checkout that never ran a package-manager install is covered by one legible
+  step instead of a silent no-op. Read "runs before `yarn install`" above as a
+  claim about execution, never about activation: the full guarantee, and the CI
+  mirror that backs the case where nobody activated anything, is
+  [ADR 0012](0012-init-activates-hooks-with-a-relative-hookspath.md). Dotfiles
+  ADR 0002 needs the same reading of its "runs everywhere" wording.
 - **Drift is byte-exact.** Because the copies are verbatim, exact equality is the
   drift signal. `classify()` in `src/commands/init.js` compares each vendored
   destination against its bundled source and returns `ABSENT`, `OK`, or `DRIFT`.

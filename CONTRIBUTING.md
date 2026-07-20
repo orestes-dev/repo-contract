@@ -14,7 +14,8 @@ node bin/cli.js validate-issue path/to/body.md --title "feat(x): do the thing"
 # Scaffold the repo-contract bundle into another repo (9 files): the Issue Form,
 # the PR Form, the two Author guides, the three gate workflows (issue-quality,
 # pr-readiness, commit-hygiene), and the two vendored git hooks (.husky/pre-commit,
-# .husky/commit-msg). `--force` upgrades drifted copies in place.
+# .husky/commit-msg), then activates those hooks by setting core.hooksPath.
+# `--force` upgrades drifted copies in place.
 node bin/cli.js init
 
 # Backfill labels/scorecards across an existing backlog
@@ -31,7 +32,7 @@ enough to strip types.
 
 ## Repo-contract git hooks
 
-`init` vendors two committed husky hooks, [`.husky/pre-commit`](.husky/pre-commit)
+`init` vendors two committed git hooks, [`.husky/pre-commit`](.husky/pre-commit)
 (no default-branch commits, em-dash policy in staged Markdown) and
 [`.husky/commit-msg`](.husky/commit-msg) (Conventional Commits subject, em-dash
 policy). They are POSIX `sh` + `git` + `jq` only, never `node_modules`, so they
@@ -39,6 +40,20 @@ run before `yarn install` and where `~/.dotfiles` is absent (CI, containers,
 fresh worktrees). repo-contract owns them byte-for-byte and drift-checks them
 against [`templates/husky/`](templates/husky/); edit the template and re-run
 `init --force`, never patch a vendored copy in place.
+
+Git only runs them once `core.hooksPath` points at `.husky`, which is per-clone
+config no repository can commit, so **every fresh clone or worktree needs one
+activation step**. `yarn install` does it here (the `prepare` script is
+`git config core.hooksPath .husky`), `node bin/cli.js init` does it anywhere, and
+`git config core.hooksPath .husky` does it with no tooling at all. The value must
+stay relative: `core.hooksPath` is shared across linked worktrees, so an absolute
+path makes every worktree run one fixed checkout's hooks. `init` repairs an
+absolute value, and repairs husky's `.husky/_` shim path too. This repo has no
+husky dependency: the hooks are executable and git execs them directly
+([ADR 0012](docs/adr/0012-init-activates-hooks-with-a-relative-hookspath.md)).
+If a hook stops firing, check `git config core.hooksPath` first, then that
+`.husky/*` is still executable (git skips a non-executable hook with only a
+hint).
 
 Each hook chains, as its last step, to an optional consumer-owned extension at
 `.husky/local/<hook>` (for example `.husky/local/pre-commit` running
@@ -100,8 +115,10 @@ just stops triggering on the override toggle, with no error). To rename one:
 
 `yarn test` runs the whole suite. Alongside the validator, action, sweep, and
 commit-validator suites, [`src/hooks.test.js`](src/hooks.test.js) exercises the
-vendored husky hooks (drift against the `templates/husky/` bundle, the
-`.husky/local/*` chain, and `init`'s drop/repair) and
+vendored git hooks (drift against the `templates/husky/` bundle, the
+`.husky/local/*` chain, `init`'s drop/repair, and the activation regressions that
+drive a real `git commit` in a never-installed checkout and in a linked worktree)
+and
 [`src/config.test.js`](src/config.test.js) covers the `.repo-contract.json`
 reader.
 

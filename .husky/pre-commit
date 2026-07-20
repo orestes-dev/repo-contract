@@ -1,9 +1,15 @@
 #!/usr/bin/env sh
 # Repo-contract pre-commit hook, vendored by repo-contract `init` (ADR 0002,
-# orestes/dotfiles#52). A committed file, so it runs where ~/.dotfiles is absent
-# (CI, containers, fresh worktrees). Depends only on POSIX sh, git, and jq
-# (jq only when .repo-contract.json exists), never on node_modules, so it runs
-# before `yarn install`. Husky executes it with `sh -e`; do not add bashisms.
+# ADR 0012, orestes/dotfiles#52). A committed file, so it runs where ~/.dotfiles
+# is absent (CI, containers, fresh worktrees). Depends only on POSIX sh, git, and
+# jq (jq only when .repo-contract.json exists), never on node_modules, so it runs
+# before `yarn install`.
+#
+# Activation is a separate matter from execution: git runs this file only while
+# core.hooksPath points at .husky. `init` sets exactly that relative value, so a
+# checkout that never installed anything is still covered and each linked worktree
+# runs the hooks committed on its own branch. Git execs this file directly, with no
+# husky shim, so it must stay executable; keep the body free of bashisms.
 #
 # repo-contract owns this file byte-for-byte and drift-checks it: edit
 # templates/husky/pre-commit upstream and re-run `init`, never patch in place.
@@ -87,6 +93,10 @@ fi
 
 # Chain to an optional consumer-owned extension for repo-specific checks.
 # repo-contract never writes .husky/local/, so it survives `init --force`.
+# Tier-3 checks do depend on node_modules (lint-staged, gitleaks), so put the
+# project's binaries on PATH first, the way husky's shim used to.
+PATH="node_modules/.bin:$PATH"
+export PATH
 if [ -r ".husky/local/pre-commit" ]; then
   sh -e ".husky/local/pre-commit" "$@"
 fi

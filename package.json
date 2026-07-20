@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "git config core.hooksPath .husky || true"
   },
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
@@ -24,7 +24,6 @@
     "@types/node": "^22",
     "eslint": "^10.7.0",
     "globals": "^17.7.0",
-    "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.5",
     "typescript": "^5",

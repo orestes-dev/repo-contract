@@ -14,7 +14,9 @@ import { sweep } from "../src/commands/sweep.js";
 const USAGE =
   "usage: repo-contract <init|validate-issue|validate-pr|sweep>\n" +
   "  init [--force]   scaffold the Issue Form + PR Form, their workflows, and the\n" +
-  "                   repo-contract git hooks into this repo\n" +
+  "                   repo-contract git hooks into this repo, and activate the\n" +
+  "                   hooks (core.hooksPath=.husky, relative so linked worktrees\n" +
+  "                   run their own)\n" +
   "                   (fails on drifted files; --force upgrades in place)\n" +
   "  validate-issue <file> [--title <title>]  validate an issue body file (exit 1 on hard errors)\n" +
   "  validate-pr <file> [--title <title>]     validate a PR body file (exit 1 on hard errors)\n" +

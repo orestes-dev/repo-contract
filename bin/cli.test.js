@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
-  mkdirSync,
   existsSync,
   readFileSync,
   writeFileSync,
@@ -124,9 +123,12 @@ test("init --force upgrades a drifted PR Form", () => {
   });
 });
 
+// A real `git init`, not a bare `.git` directory: inside a repository `init`
+// also configures `core.hooksPath`, and a `.git` that no git command can read
+// is a state this check was never about.
 test("init does not warn when a .git entry is present", () => {
   withTempDir((dir) => {
-    mkdirSync(join(dir, ".git"));
+    spawnSync("git", ["init", "-b", "main"], { cwd: dir, encoding: "utf8" });
     const { status, stderr } = runInit(dir);
     assert.equal(status, 0);
     assert.doesNotMatch(stderr, /no \.git/);
