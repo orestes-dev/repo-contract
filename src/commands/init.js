@@ -143,7 +143,11 @@ const DRIFT = "drift";
 // install step. The directory is namespaced under `.repo-contract/` rather than
 // named `.husky` or `.githooks` because a vendoring tool must not claim a name a
 // consumer may already own for its own hooks (ADR 0017).
-export const HOOKS_PATH = join(".repo-contract", "hooks");
+//
+// A literal, not a `join()`: this is a git config value, not a filesystem path,
+// and it must match the forward-slash form the `prepare` script and the docs
+// tell a consumer to set by hand.
+export const HOOKS_PATH = ".repo-contract/hooks";
 
 // Git skips a hook that is not executable, emitting only a hint. Vendored hooks
 // are written 0755 so activation cannot fail that quietly.

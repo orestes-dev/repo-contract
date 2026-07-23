@@ -1,5 +1,11 @@
 # repo-contract owns the tier-2 git hooks
 
+> **Path note:** the hook directory is now `.repo-contract/hooks` and the
+> bundle `templates/git-hooks/`, per
+> [ADR 0017](0017-vendored-hooks-move-to-repo-contract-hooks.md). Every `.husky`
+> path below reads as its `.repo-contract/hooks` equivalent; nothing else in this
+> ADR is affected.
+
 repo-contract is a safety package consumed across the org, so the commit-time
 rules every consumer must obey belong here, not in one contributor's personal
 dotfiles. Those rules are the **tier-2 repo-contract**: Conventional Commits,

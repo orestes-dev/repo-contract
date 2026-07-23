@@ -333,13 +333,16 @@ test("init reports activation skipped outside a git repository", () => {
 });
 
 // Regression (issue #79): a checkout that never ran a package-manager install
-// has no hook directory and no node_modules. Before activation moved into `init`,
-// git found nothing to run and the commit landed with enforcement silently
-// absent. It must now be blocked.
+// has no generated shim and no node_modules. Before activation moved into
+// `init`, git found nothing to run and the commit landed with enforcement
+// silently absent. It must now be blocked.
 test("a shim-less, never-installed checkout does not commit unenforced", () => {
   withGitRepo((dir, git) => {
     initInto(dir);
-    assert.ok(!existsSync(join(dir, ".husky")), "a legacy .husky exists");
+    assert.ok(
+      !existsSync(join(dir, ".repo-contract", "hooks", "_")),
+      "a generated shim exists",
+    );
     assert.ok(!existsSync(join(dir, "node_modules")), "node_modules exists");
 
     const onDefault = commitAttempt(dir, "feat(x): land on main");

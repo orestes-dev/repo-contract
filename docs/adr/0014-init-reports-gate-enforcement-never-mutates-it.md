@@ -1,5 +1,11 @@
 # `init` reports missing gate enforcement and never repairs it
 
+> **Path note:** the hook directory is now `.repo-contract/hooks` and the
+> bundle `templates/git-hooks/`, per
+> [ADR 0017](0017-vendored-hooks-move-to-repo-contract-hooks.md). Every `.husky`
+> path below reads as its `.repo-contract/hooks` equivalent; nothing else in this
+> ADR is affected.
+
 Vendoring a gate workflow buys the check **running**. It does not buy the check
 **blocking**. What blocks a merge is a required-status-check rule on the default
 branch, which lives in repository settings that nothing in a repository can
