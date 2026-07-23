@@ -14,111 +14,11 @@ import {
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { GitHub } from "../github.js";
 import { checkProtection, isDrift } from "../protection.js";
-import {
-  LABEL_META,
-  PR_LABEL_META,
-  COMMIT_LABEL_META,
-  OVERRIDE_LABEL_META,
-  WONTFIX_LABEL_META,
-} from "../constants.js";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(HERE, "..", "..");
-
-// The fixed label schema `init` materializes and reconciles: the three gate
-// triples, the three override labels, and `wontfix` (the Rejection selector),
-// each with code-owned metadata (`constants.js`). `wontfix` carries GitHub's own
-// default metadata, so reconciling it is a no-op in a repo that never recoloured
-// it. Flattened to `{ name, color, description }` so the label step is one loop,
-// mirroring the file loop above it.
-export const GATE_LABELS = [
-  LABEL_META,
-  PR_LABEL_META,
-  COMMIT_LABEL_META,
-  OVERRIDE_LABEL_META,
-  WONTFIX_LABEL_META,
-].flatMap((meta) =>
-  Object.entries(meta).map(([name, { color, description }]) => ({
-    name,
-    color,
-    description,
-  })),
-);
-
-// `templates/` is the canonical bundle for the Forms, workflows, and repo-contract
-// git hooks; this repo's `.github/` copies, root `.template.*.md` guides, and
-// `.repo-contract/hooks/` are a dogfood instance drift-checked to match it (ADR 0003,
-// ADR 0002). Every destination is a verbatim byte-for-byte copy of its source,
-// which is what makes exact equality a precise drift signal. The canonical
-// Markdown PR Form is `templates/markdown/pr.md`; `init` writes it byte-for-byte
-// to both the GitHub-rendered `.github/PULL_REQUEST_TEMPLATE.md` and the
-// agent-facing root `.template.pr.md`. Because the two are identical bytes, PR
-// authoring guidance stays in HTML comments so it never prints into the posted
-// PR body (ADR 0003). The git hooks are shipped all-in (no per-feature selection)
-// and read their opt-outs from the committed `.repo-contract.json` via jq.
-const TEMPLATES = [
-  {
-    // Consumer's copy is UI-only; the gate reads structure from its own checkout.
-    from: join(ROOT, "templates", "form", "task.yml"),
-    to: join(".github", "ISSUE_TEMPLATE", "task.yml"),
-  },
-  {
-    // Issue Author guide: the LLM-facing companion to the Issue Form, dropped at
-    // the consumer root under a non-reserved name GitHub ignores.
-    from: join(ROOT, "templates", "markdown", "issue.md"),
-    to: ".template.issue.md",
-  },
-  {
-    from: join(ROOT, "templates", "workflow", "issue-quality.yml"),
-    to: join(".github", "workflows", "issue-quality.yml"),
-  },
-  {
-    // Markdown PR Form, GitHub rendering: GitHub posts it as the PR body.
-    from: join(ROOT, "templates", "markdown", "pr.md"),
-    to: join(".github", "PULL_REQUEST_TEMPLATE.md"),
-  },
-  {
-    // PR Author guide: the same bytes at the consumer root under a non-reserved
-    // name GitHub ignores, the path the Suggested rule points agents at.
-    from: join(ROOT, "templates", "markdown", "pr.md"),
-    to: ".template.pr.md",
-  },
-  {
-    from: join(ROOT, "templates", "workflow", "pr-readiness.yml"),
-    to: join(".github", "workflows", "pr-readiness.yml"),
-  },
-  {
-    // Commit hygiene gate: the CI mirror of the repo-contract baseline. No new
-    // Form or guide; it reads the PR's commits and diff, not a body the author
-    // fills in.
-    from: join(ROOT, "templates", "workflow", "commit-hygiene.yml"),
-    to: join(".github", "workflows", "commit-hygiene.yml"),
-  },
-  {
-    // Repo-contract commit-msg hook (Conventional Commits subject, em-dash
-    // policy). Vendored as a committed hook so it enforces where `~/.dotfiles`
-    // is absent (CI, containers, fresh worktrees); jq/git/sh only, no
-    // node_modules, so it runs before `yarn install` (ADR 0002, ADR 0012). Git
-    // executes it directly via `core.hooksPath`, which is why it is written
-    // executable.
-    from: join(ROOT, "templates", "git-hooks", "commit-msg"),
-    to: join(".repo-contract", "hooks", "commit-msg"),
-    exec: true,
-  },
-  {
-    // Repo-contract pre-commit hook (no default-branch commits, em-dash policy
-    // in staged Markdown). Same vendoring rationale as commit-msg. Repo-specific
-    // checks belong in .repo-contract/hooks/local/pre-commit, which `init` never
-    // writes.
-    from: join(ROOT, "templates", "git-hooks", "pre-commit"),
-    to: join(".repo-contract", "hooks", "pre-commit"),
-    exec: true,
-  },
-];
+import { SCAFFOLD, SCAFFOLD_IDS } from "../constants.js";
+import { filesFor, labelsFor, selected } from "../scaffolds.js";
 
 // A destination is `absent`, byte-identical (`ok`), or `drift` (stale upstream
 // or locally customized — indistinguishable without a version marker we don't
@@ -177,12 +77,18 @@ prints this and writes it nowhere):
       npx github:orestes-dev/repo-contract --help`;
 
 /**
- * Classify each template's destination against the bundled source by exact
- * byte comparison. Verbatim copies make equality an exact drift signal.
+ * Classify a selection's destinations against their bundled sources by exact byte
+ * comparison. Verbatim copies make equality an exact drift signal.
+ *
+ * Per-scaffold, so an unselected scaffold's files are neither classified nor
+ * reported here: they are neither installed nor missing, and only a *selected*
+ * scaffold's drift blocks the atomic read-only run (ADR 0016). Files on disk that
+ * no selected scaffold claims are orphans, found by {@link findOrphans}.
+ * @param {string[]} ids - The scaffolds being installed.
  * @returns {{to: string, dest: string, desired: string, exec: boolean, state: string}[]}
  */
-function classify() {
-  return TEMPLATES.map(({ from, to, exec = false }) => {
+function classify(ids) {
+  return filesFor(ids).map(({ from, to, exec = false }) => {
     const dest = resolve(process.cwd(), to);
     const desired = readFileSync(from, "utf8");
     if (!existsSync(dest)) return { to, dest, desired, exec, state: ABSENT };
@@ -314,21 +220,32 @@ function resolveLabelClient() {
 }
 
 /**
- * Create or repair every label in the fixed schema, reporting per label the same
+ * Create or repair every label the selection needs, reporting per label the same
  * way the file loop reports per file (created / repaired / ok). With no client
  * (no credentials or repo context), report a single skipped line and return: the
  * file scaffolding above has already succeeded and the exit code is unchanged.
+ *
+ * The schema follows the selection, not the package: a repo that installed only
+ * `git-hooks` gets no labels at all, and one that skipped `commit-hygiene` never
+ * sees its triple appear in the repo's label list. An unselected scaffold's
+ * labels are left alone rather than deleted; removal is `uninstall`'s to do.
  * @param {object} params
  * @param {GitHub|null} params.client - The API client, or null to skip.
  * @param {(line: string) => void} params.log
+ * @param {string[]} params.ids - The scaffolds being installed.
  * @returns {Promise<void>}
  */
-export async function ensureGateLabels({ client, log }) {
+export async function ensureGateLabels({ client, log, ids }) {
   if (!client) {
     log("skip     labels (no GitHub credentials or repo context)");
     return;
   }
-  for (const { name, color, description } of GATE_LABELS) {
+  const wanted = labelsFor(ids);
+  if (wanted.length === 0) {
+    log("skip     labels (the installed scaffolds need none)");
+    return;
+  }
+  for (const { name, color, description } of wanted) {
     const state = await client.ensureLabel(name, color, description);
     log(`${state.padEnd(9)}${name}`);
   }
@@ -430,7 +347,9 @@ export async function init(argv = []) {
     );
   }
 
-  const entries = classify();
+  const ids = SCAFFOLD_IDS;
+
+  const entries = classify(ids);
   const drifted = entries.filter((e) => e.state === DRIFT);
 
   // Atomic: any drift makes a plain run read-only. Report the full picture and
@@ -464,8 +383,19 @@ export async function init(argv = []) {
     );
   }
 
+  // Activation follows the manifest: only a scaffold that declares it claims
+  // `core.hooksPath`, so a repo that did not install the hooks never has its git
+  // config repointed at a directory it does not own.
+  const activates = selected(ids).some((s) => s.activatesHooks);
   console.log("\nActivation:");
-  const activation = ensureHooksPath({ log: (line) => console.log(line) });
+  const activation = activates
+    ? ensureHooksPath({ log: (line) => console.log(line) })
+    : "not-installed";
+  if (!activates) {
+    console.log(
+      `skip     core.hooksPath (${SCAFFOLD.GIT_HOOKS} is not installed)`,
+    );
+  }
 
   const client = resolveLabelClient();
 
@@ -473,6 +403,7 @@ export async function init(argv = []) {
   await ensureGateLabels({
     client,
     log: (line) => console.log(line),
+    ids,
   });
 
   console.log("\nProtection:");

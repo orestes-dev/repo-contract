@@ -212,7 +212,7 @@ export function validateCommits({
   files = [],
   headRef = "",
   defaultBranch = "",
-  config = { overrides: {} },
+  config = { overrides: {}, scaffolds: [] },
 }) {
   return {
     checks: [
