@@ -124,6 +124,22 @@ and
 [`src/config.test.js`](src/config.test.js) covers the `.repo-contract.json`
 reader.
 
+## Architecture decisions
+
+Decisions live in [`docs/adr/`](docs/adr/), numbered and dated. When a later
+session **revises** one, amend that ADR in place rather than writing a superseding
+one, and move the reading you abandoned into its Considered options so amending
+costs no reasoning. A consolidation of the set into one revised, non-conflicting
+document per decision is planned, and a supersession chain is exactly what that
+consolidation would have to unwind: two ADRs disagreeing about the same decision
+is the state it exists to remove.
+
+This is not a licence to rewrite history. An ADR whose decision still stands takes
+an appended note when new evidence arrives (see
+[ADR 0009](docs/adr/0009-serialise-gate-runs-instead-of-cancelling.md)); only a
+decision that was actually reversed gets amended, and the reversal is legible in
+git and in the Considered options either way.
+
 ## Conventions
 
 Structure is owned by code: the ordered field descriptor in
