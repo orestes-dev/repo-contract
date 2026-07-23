@@ -9,8 +9,9 @@ import {
   loadConfig,
   getOverride,
   formatOverride,
+  writeScaffolds,
 } from "./config.js";
-import { CONFIG_FILENAME } from "./constants.js";
+import { CONFIG_FILENAME, SCAFFOLD, SCAFFOLD_IDS } from "./constants.js";
 
 // A scratch repo root with an optional `.repo-contract.json`, auto-cleaned.
 function withRepo(contents) {
@@ -126,6 +127,93 @@ test("invalid JSON is an error that names the file", () => {
 test("overrides defaults to empty when the key is omitted", () => {
   const config = parseConfig(JSON.stringify({}));
   assert.deepEqual(config.overrides, {});
+});
+
+// The install manifest (ADR 0016). An absent key means NONE installed, which is
+// what makes a pre-manifest repo take one deliberate `init` run rather than being
+// silently read as a full install.
+test("an absent scaffolds key means none installed, not all-in", () => {
+  assert.deepEqual(parseConfig(JSON.stringify({})).scaffolds, []);
+  assert.deepEqual(parseConfig(EXAMPLE).scaffolds, []);
+});
+
+test("a scaffolds manifest parses, deduplicated of order", () => {
+  const raw = JSON.stringify({
+    scaffolds: [SCAFFOLD.GIT_HOOKS, SCAFFOLD.QUALITY_GATES],
+  });
+  assert.deepEqual(parseConfig(raw).scaffolds, [
+    SCAFFOLD.QUALITY_GATES,
+    SCAFFOLD.GIT_HOOKS,
+  ]);
+});
+
+test("an unknown scaffold id is an error listing the known ids", () => {
+  const raw = JSON.stringify({ scaffolds: ["issue-quality"] });
+  assert.throws(() => parseConfig(raw), /unknown scaffold "issue-quality"/);
+  assert.throws(() => parseConfig(raw), new RegExp(SCAFFOLD.QUALITY_GATES));
+});
+
+test("a non-string scaffold id is an error", () => {
+  assert.throws(
+    () => parseConfig(JSON.stringify({ scaffolds: [42] })),
+    /unknown scaffold 42/,
+  );
+});
+
+test("a duplicated scaffold id is an error", () => {
+  const raw = JSON.stringify({
+    scaffolds: [SCAFFOLD.GIT_HOOKS, SCAFFOLD.GIT_HOOKS],
+  });
+  assert.throws(() => parseConfig(raw), /more than once/);
+});
+
+test("a non-array scaffolds is an error", () => {
+  assert.throws(
+    () => parseConfig(JSON.stringify({ scaffolds: SCAFFOLD.GIT_HOOKS })),
+    /must be an array of scaffold ids/,
+  );
+});
+
+// "Nothing installed" has exactly one representation: the absent key. An empty
+// array is refused rather than accepted as a synonym for it.
+test("an empty scaffolds array is an error pointing at removing the key", () => {
+  assert.throws(
+    () => parseConfig(JSON.stringify({ scaffolds: [] })),
+    /Remove the key entirely/,
+  );
+});
+
+test("writeScaffolds creates the file when absent", () => {
+  const dir = withRepo(undefined);
+  try {
+    writeScaffolds([SCAFFOLD.GIT_HOOKS], dir);
+    assert.deepEqual(loadConfig(dir).scaffolds, [SCAFFOLD.GIT_HOOKS]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("writeScaffolds rewrites the manifest and preserves overrides", () => {
+  const dir = withRepo(EXAMPLE);
+  try {
+    writeScaffolds([SCAFFOLD.GIT_HOOKS, SCAFFOLD.QUALITY_GATES], dir);
+    writeScaffolds(SCAFFOLD_IDS, dir);
+    const config = loadConfig(dir);
+    // Authoritative, not merged into: the second write is the whole truth.
+    assert.deepEqual(config.scaffolds, SCAFFOLD_IDS);
+    assert.equal(config.overrides.maxAllowedEmDashes.value, 34);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("writeScaffolds refuses an empty selection rather than writing []", () => {
+  const dir = withRepo(undefined);
+  try {
+    assert.throws(() => writeScaffolds([], dir), /Refusing to write an empty/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("getOverride returns the override when set and undefined otherwise", () => {

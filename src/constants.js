@@ -161,6 +161,32 @@ export const OVERRIDE_LABEL_META = {
 // scorecards without any gate adopting another's comment.
 export const COMMIT_COMMENT_MARKER = "<!-- commit-hygiene-gate -->";
 
+// The independently-installable units `init` scaffolds (ADR 0016). A Scaffold is
+// not a Gate: `quality-gates` bundles two (the issue and PR gates, coupled
+// because the PR gate's linked-issue check reads the issue gate's labels, so
+// coupling dissolves the only dependency edge rather than managing it),
+// `commit-hygiene` bundles one, and `git-hooks` bundles none. The ids reuse each
+// scaffold's most-recognizable public handle, coining a name only where the
+// identity is diffuse: `commit-hygiene` matches the labels and status-check
+// context an operator already sees, `git-hooks` names the mechanism, and
+// `quality-gates` is coined because its two gates have distinct handles with no
+// shared label to reuse.
+export const SCAFFOLD = {
+  QUALITY_GATES: "quality-gates",
+  COMMIT_HYGIENE: "commit-hygiene",
+  GIT_HOOKS: "git-hooks",
+};
+
+// The known ids, in the order `--help`, the prompt, and every report list them.
+// The membership `parseConfig` validates the `scaffolds` manifest against.
+export const SCAFFOLD_IDS = Object.values(SCAFFOLD);
+
+// The `.repo-contract.json` key holding the install manifest: an authoritative
+// whitelist of installed scaffolds, rewritten on every `init` run. An absent key
+// means NONE installed, not all-in (ADR 0016), so a repo scaffolded before the
+// manifest existed takes one `init` run to record what it already has.
+export const SCAFFOLDS_KEY = "scaffolds";
+
 // Enforcement opt-out keys read from `.repo-contract.json` (src/config.js). They
 // mirror the `git config hooks.*` opt-outs of the local baseline hooks
 // (~/.dotfiles/git-hooks/), so the CI mirror relaxes on the same axes and the
