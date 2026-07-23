@@ -28,8 +28,12 @@ core (`src/rules.js`).
   `validate-pr` run the same checks locally before you open the object; `sweep`
   backfills labels across an existing backlog.
 - **Git hooks**: committed hooks that enforce the same baseline as the
-  commit-hygiene gate, locally, with `sh` + `git` + `jq` only. `init` activates
-  them in the checkout it runs in; no husky and no install required.
+  commit-hygiene gate, locally, with `sh` + `git` + `jq` only, never
+  `node_modules`, so they run before any install. That strict dependency budget
+  is why the hooks re-implement the Conventional-Commits check in sh rather than
+  reusing a library the CI gate can (ADR
+  [0015](docs/adr/0015-commit-hooks-keep-the-sh-jq-dependency-budget.md)). `init`
+  activates them in the checkout it runs in; no husky and no install required.
 
 A red check only _blocks_ once its context is a required status check on the
 default branch. That is a repository setting no repo can commit, so `init` cannot
