@@ -39,8 +39,10 @@ export const HOOKS_PATH = ".repo-contract/hooks";
  * Read `core.hooksPath` as it applies to this checkout, or `""` when unset.
  * `git config --get` exits 1 on a missing key, which is not an error here. This
  * reads the *effective* value (local over global over system), which is what a
- * git hook actually runs against: `init` repairs whatever this resolves to, and
- * `findOrphans` asks it "is this still enforcing?".
+ * git hook actually runs against, so `findOrphans` asks it "is this still
+ * enforcing?". `init`'s own write path reads the *local* value instead
+ * ({@link foreignHooksPath}), since ownership is a per-repo fact and a global
+ * tier-1 value is not repo-contract's to touch (ADR 0020).
  * @param {string} cwd
  * @returns {string}
  */
@@ -61,11 +63,12 @@ export function readHooksPath(cwd) {
  * system), or `""` when unset there. `init` writes activation to the local scope
  * (a per-clone setting, never committed), so this is the value that answers "did
  * repo-contract set this?" — as opposed to a tier-1 global `core.hooksPath` that
- * `uninstall` must hand back to, not clobber.
+ * `uninstall` must hand back to, not clobber. Both `init` and `uninstall` decide
+ * ownership from this local value, never the merged effective one (ADR 0020).
  * @param {string} cwd
  * @returns {string}
  */
-function readLocalHooksPath(cwd) {
+export function readLocalHooksPath(cwd) {
   try {
     return execFileSync(
       "git",
@@ -78,24 +81,60 @@ function readLocalHooksPath(cwd) {
 }
 
 /**
- * Point `core.hooksPath` at the vendored hook directory, so the files `init`
- * just wrote actually run (ADR 0012, ADR 0017). Sets the relative
- * `.repo-contract/hooks`, and repairs any other value, including a legacy
- * `.husky`/`.husky/_` and any absolute path that would make every linked
- * worktree run one fixed checkout's hooks.
+ * This repo's *local* `core.hooksPath` when it is **foreign** — set to anything
+ * other than the managed `.repo-contract/hooks` — else `""`. Unset and
+ * already-managed both return `""`, since neither blocks `init`.
  *
- * Reports the outcome as one line, the way the file and label loops do. Outside
- * a git repository there is nothing to configure: say so loudly (the hooks are
- * inert until someone sets it) and leave the exit code alone, since scaffolding
- * into a directory before `git init` is legitimate. A `git config` that fails
- * where a repository *does* exist is fatal: silently leaving enforcement off is
- * the exact failure mode this step exists to remove.
+ * This is the single ownership equality (ADR 0020), surfaced for `init`'s
+ * pre-flight to gate the `git-hooks` scaffold on before it writes anything: a
+ * foreign value means an activation `init` does not own, so the vendored hooks
+ * would sit inert. A `.husky`, an operator's own directory, and any absolute
+ * path are all foreign alike; repo-contract only ever *writes* the relative
+ * managed value, so it never authored anything else. Outside a git repository
+ * the local read is empty, so this is `""` and nothing is blocked
+ * ({@link ensureHooksPath} reports the no-repo case).
+ * @param {string} cwd
+ * @returns {string} The foreign value, or `""` when unset or already managed.
+ */
+export function foreignHooksPath(cwd) {
+  const local = readLocalHooksPath(cwd);
+  return local === "" || local === HOOKS_PATH ? "" : local;
+}
+
+/**
+ * Point `core.hooksPath` at the vendored hook directory, so the files `init`
+ * just wrote actually run (ADR 0012, ADR 0017, ADR 0020). Owns only the value it
+ * set: it writes the relative `.repo-contract/hooks` when this repo's *local*
+ * config leaves it unset, leaves the managed value in place when it already
+ * holds it, and refuses to touch a **foreign** value (one repo-contract did not
+ * write) unless the caller passed an explicit `overwrite` opt-in.
+ *
+ * The ownership test reads the *local* value only (never the merged effective
+ * one), the mirror of `releaseHooksPath` on the way out. A foreign value with no
+ * opt-in reports the block and returns without writing; `init`'s pre-flight
+ * withholds the `git-hooks` files in that same case, so nothing is half-laid.
+ * With `overwrite`, the foreign value is displaced and printed, because a local
+ * `core.hooksPath` is not committed and has no reflog to recover it from.
+ *
+ * Reports the outcome as one line (or a loud block), the way the file and label
+ * loops do. Outside a git repository there is nothing to configure: say so
+ * loudly (the hooks are inert until someone sets it) and leave the exit code
+ * alone, since scaffolding into a directory before `git init` is legitimate. A
+ * `git config` that fails where a repository *does* exist is fatal: silently
+ * leaving enforcement off is the exact failure mode this step exists to remove.
  * @param {object} params
  * @param {string} [params.cwd]
  * @param {(line: string) => void} params.log
- * @returns {string} `skipped`, `ok`, `created`, or `repaired`.
+ * @param {boolean} [params.overwrite] - Adopt a foreign local value (the
+ *   `--overwrite-hooks-path` / prompt opt-in). Ignored when the value is unset
+ *   or already managed.
+ * @returns {string} `skipped`, `ok`, `created`, `overwritten`, or `blocked`.
  */
-export function ensureHooksPath({ cwd = process.cwd(), log }) {
+export function ensureHooksPath({
+  cwd = process.cwd(),
+  log,
+  overwrite = false,
+}) {
   if (!existsSync(resolve(cwd, ".git"))) {
     log(
       `skip     core.hooksPath (no git repository here). The vendored hooks will\n` +
@@ -104,10 +143,29 @@ export function ensureHooksPath({ cwd = process.cwd(), log }) {
     return "skipped";
   }
 
-  const current = readHooksPath(cwd);
-  if (current === HOOKS_PATH) {
+  const local = readLocalHooksPath(cwd);
+  if (local === HOOKS_PATH) {
     log(`ok       core.hooksPath=${HOOKS_PATH}`);
     return "ok";
+  }
+
+  // A foreign value is not `init`'s to repoint. Without the explicit opt-in,
+  // report the block (the pre-flight has already withheld the hook files) and
+  // return, leaving the operator's value exactly as it was.
+  if (local !== "" && !overwrite) {
+    const hazard = isAbsolute(local)
+      ? " It is absolute, which would pin every linked worktree to one fixed\n         checkout's hooks even once resolved."
+      : "";
+    log(
+      `block    core.hooksPath=${local} was not set by repo-contract, so the vendored\n` +
+        `         git hooks would sit on disk inert (git runs hooks only from the path this\n` +
+        `         points at). No git-hooks files were written.${hazard}\n` +
+        `         Resolve it either way, with git-hooks selected: unset it\n` +
+        `         (git config --local --unset core.hooksPath) and re-run init, or re-run with\n` +
+        `         --overwrite-hooks-path to have repo-contract adopt ${HOOKS_PATH}\n` +
+        `         (the displaced value is not committed and cannot be recovered).`,
+    );
+    return "blocked";
   }
 
   try {
@@ -125,15 +183,17 @@ export function ensureHooksPath({ cwd = process.cwd(), log }) {
     process.exit(1);
   }
 
-  if (current === "") {
+  if (local === "") {
     log(`create   core.hooksPath=${HOOKS_PATH}`);
     return "created";
   }
-  const why = isAbsolute(current)
-    ? "absolute, so every linked worktree ran this one checkout's hooks"
-    : "did not point at the vendored hooks";
-  log(`repair   core.hooksPath=${HOOKS_PATH} (was '${current}': ${why})`);
-  return "repaired";
+  // Reached only under the explicit opt-in: print the displaced value, since a
+  // local `core.hooksPath` is uncommitted and unrecoverable once overwritten.
+  log(
+    `overwrite core.hooksPath=${HOOKS_PATH} (displaced '${local}', which repo-contract did ` +
+      `not set and which is committed nowhere: note it now if you still need it)`,
+  );
+  return "overwritten";
 }
 
 /**
