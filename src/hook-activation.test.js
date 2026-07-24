@@ -188,7 +188,7 @@ test("ensureHooksPath blocks a foreign value and leaves it untouched", () => {
 
 // The block is a discovery point, not just a refusal: whatever hook tool held
 // `core.hooksPath` can keep running through the local chain, so the message says
-// so — and says it without naming a tool, since the remedy is the same for all.
+// so, and says it without naming a tool, since the remedy is the same for all.
 test("the foreign-value block points at the local chain, tool-agnostically", () => {
   // Not `.husky`: the block echoes the foreign value verbatim, so a husky value
   // would satisfy the "names no tool" assertion trivially and by accident.

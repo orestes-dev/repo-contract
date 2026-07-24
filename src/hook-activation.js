@@ -41,7 +41,10 @@ export const HOOKS_PATH = ".repo-contract/hooks";
 // taking the slot displaces whatever hook tool held it, and this chain is how
 // those hooks keep running. Deliberately tool-agnostic; naming husky (or any
 // other tool) would re-narrow a remedy that applies to all of them.
-export const LOCAL_CHAIN = `${HOOKS_PATH}/local`;
+//
+// Module-local: the chain is consumer-owned, so no other module here reads or
+// writes it, and only this message needs to name it.
+const LOCAL_CHAIN = `${HOOKS_PATH}/local`;
 
 /**
  * Read `core.hooksPath` as it applies to this checkout, or `""` when unset.
