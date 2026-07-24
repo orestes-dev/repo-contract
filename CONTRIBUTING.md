@@ -175,9 +175,12 @@ narrates an implementation goes stale silently, because no drift test covers it.
 codebase **and this repo's own docs** open could not recover it. Names of
 functions and fields stay only where they are the term's canonical handle
 (`core.hooksPath` **is** the vocabulary), never as narration of how the code is
-arranged. The deliberate overlaps that Accepted duplication covers are unaffected;
-the target is a glossary entry paraphrasing prose the README or this file already
-carries.
+arranged. The CLI surface is the sharpest case: a subcommand named as the actor
+of a rule is vocabulary (`init` ships the carrier and never the enforcement), but
+a flag, an exit code, or an invocation never is, because `--help` and the README
+own those and a glossary copy of them goes stale unnoticed. The deliberate
+overlaps that Accepted duplication covers are unaffected; the target is a
+glossary entry paraphrasing prose the README or this file already carries.
 
 **The ownership split.** `CONTEXT.md` owns what a word means and what it is not.
 ADRs own why this option beat that one. Code owns how. An entry that argues links

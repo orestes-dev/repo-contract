@@ -132,7 +132,7 @@ The pre-commit rule refusing a commit made while `HEAD` is the default branch, p
 _Avoid_: Branch protection (GitHub's server-side setting is the collision this qualified name guards against).
 
 **`.repo-contract/hooks/local` chain**:
-The consumer-owned extension point the repo-contract hooks call last, so a repo adds its own tier-3 project checks without editing the vendored hook. `init` never writes `.repo-contract/hooks/local/`, so it survives `init --force`, which would otherwise repair a drifted vendored hook. It doubles as the **adoption path** for a consumer whose `core.hooksPath` repo-contract displaced: whatever hook tool held the single-valued setting keeps running once its bodies move here (ADR [0021](docs/adr/0021-the-local-chain-is-the-adoption-path.md)).
+The consumer-owned extension point the repo-contract hooks call last, so a repo adds its own tier-3 project checks without editing the vendored hook. `init` never writes `.repo-contract/hooks/local/`, so it survives the repair that rewrites a drifted vendored hook. It doubles as the **adoption path** for a consumer whose `core.hooksPath` repo-contract displaced: whatever hook tool held the single-valued setting keeps running once its bodies move here (ADR [0021](docs/adr/0021-the-local-chain-is-the-adoption-path.md)).
 _Avoid_: Local hook override (it chains after the contract checks; it does not replace them).
 
 **Suggested rule**:
@@ -180,7 +180,7 @@ A restatement deliberately left in place because collapsing it costs more than i
 
 **Dev**: I made a worktree off this repo and my commits there sail through with no hook output at all. The `.repo-contract/hooks/` files are right there in the checkout.
 
-**Domain expert**: The files being there is execution; you are missing **Hook activation**. Check `git config core.hooksPath`. An absolute value is foreign (repo-contract only ever writes the relative form, which resolves against each worktree's own root), so `init` will not repoint it for you: unset it and re-run, or re-run with `--overwrite-hooks-path`. If your commits already landed unenforced, the **Commit hygiene** gate will still catch them on the PR: that is the backstop for exactly this.
+**Domain expert**: The files being there is execution; you are missing **Hook activation**. Check `git config core.hooksPath`. An absolute value is foreign (repo-contract only ever writes the relative form, which resolves against each worktree's own root), so `init` will not repoint it for you: it refuses, and names both the remedy and the explicit opt-in that takes the slot anyway. If your commits already landed unenforced, the **Commit hygiene** gate will still catch them on the PR: that is the backstop for exactly this.
 
 **Dev**: My PR gate is vendored and reports red on a PR, and the PR merged anyway. Is the gate broken?
 
