@@ -160,9 +160,10 @@ export function ensureHooksPath({
       `block    core.hooksPath=${local} was not set by repo-contract, so the vendored\n` +
         `         git hooks would sit on disk inert (git runs hooks only from the path this\n` +
         `         points at). No git-hooks files were written.${hazard}\n` +
-        `         Resolve it either way: unset it (git config --local --unset core.hooksPath)\n` +
-        `         and re-run init, or re-run with --overwrite-hooks-path to have repo-contract\n` +
-        `         adopt ${HOOKS_PATH} (the displaced value is not committed and cannot be recovered).`,
+        `         Resolve it either way, with git-hooks selected: unset it\n` +
+        `         (git config --local --unset core.hooksPath) and re-run init, or re-run with\n` +
+        `         --overwrite-hooks-path to have repo-contract adopt ${HOOKS_PATH}\n` +
+        `         (the displaced value is not committed and cannot be recovered).`,
     );
     return "blocked";
   }

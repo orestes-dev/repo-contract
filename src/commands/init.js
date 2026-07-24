@@ -463,14 +463,12 @@ export async function init(argv = []) {
   }
 
   // The manifest goes last, once everything it claims has landed, so it never
-  // records an install a mid-run failure prevented. A block leaves it untouched
-  // entirely: recording `git-hooks` as dropped would defeat both remedies the
-  // block prints, since a bare re-run (or one after `git config --local --unset`)
-  // reads the recorded selection and would never re-select the scaffold. Leaving
-  // the manifest as it was keeps a fresh repo's re-run all-in and a prior
-  // manifest's re-run faithful, so the hooks are retried either way. The
-  // already-written other scaffolds are re-selected and recorded on that re-run.
-  if (!hooksBlocked) {
+  // records an install a mid-run failure prevented, and it records only what
+  // landed: a blocked `git-hooks` is absent from `fileIds`, so it is recorded as
+  // not installed (the honest state, since its files were withheld). A hooks-only
+  // run that got blocked installs nothing, so there is nothing to record and the
+  // prior manifest is left untouched rather than wiped.
+  if (fileIds.length > 0) {
     writeScaffolds(fileIds, cwd);
     console.log(`\nRecorded in ${CONFIG_FILENAME}: ${fileIds.join(", ")}`);
   }

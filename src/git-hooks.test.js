@@ -316,6 +316,12 @@ test("init blocks git-hooks on a foreign core.hooksPath and writes none of its f
       "a non-hooks scaffold was blocked too",
     );
     assert.match(stdout, /create .github\/workflows\/issue-quality\.yml/);
+    // The manifest records what landed: the other scaffolds, never the withheld
+    // git-hooks (the honest "manifest = installed" contract).
+    const manifest = JSON.parse(
+      readFileSync(join(dir, ".repo-contract.json"), "utf8"),
+    );
+    assert.deepEqual(manifest.scaffolds, ["quality-gates", "commit-hygiene"]);
   });
 });
 
@@ -361,6 +367,11 @@ test("--only git-hooks on a foreign value blocks with nothing installed", () => 
     assert.notEqual(status, 0);
     assert.match(stdout, /block\s+core\.hooksPath=\.husky/);
     assert.equal(hooksPathOf(dir), ".husky");
+    // Nothing landed, so there is nothing to record and no manifest is written.
+    assert.ok(
+      !existsSync(join(dir, ".repo-contract.json")),
+      "a manifest was written for a run that installed nothing",
+    );
   });
 });
 
