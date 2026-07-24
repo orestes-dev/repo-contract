@@ -164,6 +164,34 @@ an appended note when new evidence arrives (see
 decision that was actually reversed gets amended, and the reversal is legible in
 git and in the Considered options either way.
 
+## Writing a glossary entry
+
+[`CONTEXT.md`](CONTEXT.md) is the domain glossary, and two principles decide what
+belongs in an entry. Author against them rather than by imitating the longest
+neighbour; an entry a reader wades through stops being consulted, and prose that
+narrates an implementation goes stale silently, because no drift test covers it.
+
+**The recoverability test.** A sentence earns its place only if a reader with the
+codebase **and this repo's own docs** open could not recover it. Names of
+functions and fields stay only where they are the term's canonical handle
+(`core.hooksPath` **is** the vocabulary), never as narration of how the code is
+arranged. The deliberate overlaps that Accepted duplication covers are unaffected;
+the target is a glossary entry paraphrasing prose the README or this file already
+carries.
+
+**The ownership split.** `CONTEXT.md` owns what a word means and what it is not.
+ADRs own why this option beat that one. Code owns how. An entry that argues links
+to its ADR; an entry that enumerates points at the code. An entry that exists only
+to describe a code artifact, with no vocabulary dispute and no boundary to guard,
+does not belong at all.
+
+Three kinds of sentence survive regardless, because code cannot carry them: the
+boundary a term guards (what it is **not**, and the collision a qualified name
+exists to prevent), the `_Avoid_` synonyms, and consequential asymmetries a reader
+would otherwise infer wrongly (an absent `scaffolds` key means none installed, not
+all-in). There is no length ceiling and no lint: a mechanical proxy would be
+satisfied by splitting one long entry into two.
+
 ## Conventions
 
 Structure is owned by code: the ordered field descriptor in
