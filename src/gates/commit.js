@@ -19,6 +19,7 @@ import {
   COMMIT_OVERRIDE_LABEL,
   OVERRIDE_HEADING,
   COMMIT_COMMENT_MARKER,
+  GATE_CONTEXT,
 } from "../constants.js";
 
 /**
@@ -39,6 +40,7 @@ export const commitGate = {
   commentMarker: COMMIT_COMMENT_MARKER,
   presentation: COMMIT_PRESENTATION,
   hardFail: true,
+  context: GATE_CONTEXT["commit-hygiene"],
   exempt: (object) => (object.author ?? "").endsWith(BOT_SUFFIX),
   getNumber: (event) => event.pull_request?.number ?? event.number,
   getObject: async (gh, number) => {

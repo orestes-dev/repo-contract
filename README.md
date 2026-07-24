@@ -39,9 +39,12 @@ core (`src/rules.js`).
 A red check only _blocks_ once its context is a required status check on the
 default branch. That is a repository setting no repo can commit, so `init` cannot
 ship it, and until someone sets it a failing gate reports and the PR merges
-anyway. `init` ends with a **Protection** line reporting which side of that line
-the repo is on; it reports and never configures protection, since requiring a
-currently-red check blocks every open PR at once (ADR
+anyway. `init` ends with a **Protection** section reporting which side of that
+line each merge-blocking gate vendored here is on: the pull request and
+commit-hygiene gates both hard-fail, so an unrequired `commit-hygiene` context
+blocks exactly as little as an unrequired `pr-readiness` one. It reports and
+never configures protection, since requiring a currently-red check blocks every
+open PR at once (ADR
 [0014](docs/adr/0014-init-reports-gate-enforcement-never-mutates-it.md)).
 
 Common threads across all three gates:
@@ -392,28 +395,36 @@ Installs a selected subset of the three [scaffolds](#scaffolds) into a repo (see
 prompts for the ones not yet installed, and `--force` upgrades drifted copies in
 place. `init` only ever adds; removing a scaffold is `uninstall`'s job.
 
-`init` ends with a **Protection** line reporting whether the merge-blocking PR
-gate is actually enforced. Vendoring the workflow makes the check **run**; only a
+`init` ends with a **Protection** section reporting whether each merge-blocking
+gate is actually enforced. Vendoring a workflow makes its check **run**; only a
 required-status-check rule on the default branch makes it **block**, and that rule
 lives in repository settings no repo can commit, so `init` cannot ship it and the
-enforcing half drifts unseen (ADR 0014). The line reads the `pr-readiness` context
-against both classic branch protection and rulesets, using the `gh` session `init`
-already opened:
+enforcing half drifts unseen (ADR 0014). It covers every gate whose failure hard-
+fails CI, which today is `pr-readiness` and `commit-hygiene` (the issue gate is
+advisory: issues have no merge to block). A context is reported when the workflow
+publishing it is present in `.github/workflows/`, so a leftover gate still running
+unrequired is reported too. Each context is read against both classic branch
+protection and rulesets, using the `gh` session `init` already opened:
 
-| Reported        | Meaning                                             |
-| --------------- | --------------------------------------------------- |
-| `required`      | the context is required; the gate really does block |
-| `not-required`  | the branch is protected, but not on this context    |
-| `unprotected`   | the branch has no protection or ruleset at all      |
-| `not-installed` | no `pr-readiness*.yml` vendored yet                 |
-| `unreadable`    | a 403 hid the answer; re-run with admin scope       |
+| Reported        | Meaning                                                  |
+| --------------- | -------------------------------------------------------- |
+| `required`      | the context is required; the gate really does block      |
+| `not-required`  | the branch is protected, but not on this context         |
+| `unprotected`   | the branch has no protection or ruleset at all           |
+| `not-installed` | no workflow publishes it here, so it gets no line at all |
+| `unreadable`    | a 403 hid the answer; re-run with admin scope            |
+
+The verdict is per context, so one run can report `pr-readiness` required and
+`commit-hygiene` not. Contexts that reach the same verdict share one line, since
+`unprotected` and `unreadable` are facts about the branch rather than about a
+gate, and the remediation is printed once naming every drifted context.
 
 `unreadable` is reported as ok, not a warning: reading protection needs admin
 scope, and a permissions boundary is an unknown, never a verdict. The report never
 affects `init`'s exit code, and never configures protection: requiring a check
 that is currently red blocks every open PR at once, so it stays a deliberate human
-act. Do it once the gate is green on the PRs you care about, by adding
-`pr-readiness` to the default branch's required status checks.
+act. Do it once each gate is green on the PRs you care about, by adding its
+context to the default branch's required status checks.
 
 ### `uninstall`
 

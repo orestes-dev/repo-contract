@@ -198,7 +198,7 @@ A restatement deliberately left in place because collapsing it costs more than i
 
 **Dev**: My PR gate is vendored and reports red on a PR, and the PR merged anyway. Is the gate broken?
 
-**Domain expert**: The gate worked; you are missing **Gate activation**. Vendoring the workflow makes the check run, not block. Blocking needs the gate's **Gate context** (`pr-readiness`) listed among the default branch's required status checks, and that is a repository setting no repo can commit, so `init` cannot ship it. `init` ends with a Protection line that reads both classic protection and rulesets and tells you which of the five cases you are in. It will not fix it for you, deliberately, because requiring a check that is currently red blocks every open PR at once.
+**Domain expert**: The gate worked; you are missing **Gate activation**. Vendoring the workflow makes the check run, not block. Blocking needs the gate's **Gate context** (`pr-readiness`) listed among the default branch's required status checks, and that is a repository setting no repo can commit, so `init` cannot ship it. `init` ends with a Protection section that reads both classic protection and rulesets and tells you, per merge-blocking gate vendored here, which of the five cases you are in. It will not fix it for you, deliberately, because requiring a check that is currently red blocks every open PR at once.
 
 **Dev**: Same shape as the hooks problem, then.
 

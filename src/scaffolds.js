@@ -16,10 +16,11 @@
 // byte-for-byte copy of, which is what makes exact equality a precise drift signal
 // (ADR 0003).
 
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  GATE_CONTEXT,
   LABEL_META,
   PR_LABEL_META,
   COMMIT_LABEL_META,
@@ -205,6 +206,29 @@ export function selected(ids) {
  */
 export function filesFor(ids) {
   return selected(ids).flatMap((s) => s.files);
+}
+
+/**
+ * The status-check contexts a scaffold publishes, read from the workflow files it
+ * already vendors rather than restated per scaffold: `GATE_CONTEXT` is keyed by
+ * workflow filename stem precisely so a vendored file maps to the context it
+ * publishes, and a scaffold that lists its contexts by hand would be one more
+ * place to forget.
+ *
+ * Its consumer is `nextSteps()`, which is selection-keyed: prose about what THIS
+ * run installed. The Protection report is not a consumer; it keys off the
+ * workflow files on disk, so it also sees an Orphan gate (ADR 0014, amended).
+ * @param {string} id
+ * @returns {string[]}
+ */
+export function contextsFor(id) {
+  const contexts = /** @type {Record<string, string|undefined>} */ (
+    GATE_CONTEXT
+  );
+  return scaffold(id)
+    .files.filter((f) => dirname(f.to) === join(".github", "workflows"))
+    .map((f) => contexts[basename(f.to, extname(f.to))])
+    .filter((context) => context !== undefined);
 }
 
 /**
