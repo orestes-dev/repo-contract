@@ -81,59 +81,13 @@ verdict. A run that will skip can no longer kill a run that would work.
   `init --force`, with the git diff as the audit trail (ADR 0003, ADR 0007).
   Until they do, they keep the racy `cancel-in-progress: true`.
 
-## Evidence (2026-07-23, issue #115)
+## Evidence (2026-07-24, issues #114 and #115)
 
 This decision was reasoned only about a label present at creation
-(`opened`+`labeled`). It was later challenged by the possibility that a label
-added to an already-open PR whose required checks are already green (the
-`gh pr edit --add-label` case) writes a fresh `skipped` check-run that overwrites
-the green one and deadlocks branch protection. #115 ran the full config matrix
-(six variants side-by-side as distinct required contexts, protected and
-unprotected) in a throwaway repo to settle it on evidence. The decision is
-**confirmed and kept**, and no workflow change followed. Two mechanical facts
-account for every outcome:
-
-- **A `skipped` required check-run is treated as passing by branch protection.**
-  A label event that triggers a skip-variant does write a fresh `skipped`
-  check-run that becomes the latest for its context, overwriting the green
-  `success`, yet `mergeStateStatus` stays `CLEAN`, protected and unprotected.
-  The feared skipped-overwrite deadlock does not exist.
-- **A `cancelled` required check-run, if it remains the latest, is treated as
-  non-passing (`BLOCKED`).** Isolated with `gh run cancel` and nothing
-  superseding it, a lone `cancelled` context does block the merge. In a real
-  label race, however, the joining label event's own run reports a `skipped`
-  check-run that _supersedes_ the `cancelled` one, so it never remains latest and
-  the merge settles `CLEAN` anyway.
-
-The consequence for this decision is stronger than "verdict preserved":
-`cancel-in-progress: false` never cancels a run, so the one branch-protection
-`BLOCKED` mode a label event could otherwise produce (a stale `cancelled`
-required check) cannot arise from these gates at all. The harm the racy
-`cancel-in-progress: true` actually caused is the one this ADR already named,
-a **dropped verdict**: silent `CLEAN`, failing the transitive linked-issue
-check. That was confirmed here on the issue gate, where the label _is_ the
-verdict. An incidental creation label under `cancel:true` cancels the validating
-run and the verdict label is never written, while the serial variant drains and
-writes it. On the two PR gates the verdict is the CI check-run and the label is a
-cosmetic echo, so a label event can never leave a required context blocking.
-Serial is kept there too for consistency and to keep manual `pr-readiness:*` and
-`override:*` edits self-healing, not because merge safety demands it. Dropping the
-label trigger on the PR gates (honouring overrides via the next `edited` content
-event instead) was measured to work but loses that self-heal, so it was not
-adopted. Splitting label events into their own concurrency group, or removing
-concurrency entirely, was re-measured and re-rejected: both avoid the
-cancellation but re-introduce the content/label concurrency this ADR's third
-rejected option already called out.
-
-The global agent-prose rule ("set every label at PR creation ... a label event
-... deadlocks branch protection at `mergeable_state: blocked` on a stale
-cancelled check-run") describes a real mechanism, the `cancelled`-stays-latest
-`BLOCKED` finding above, and stays as general advice for `cancel:true` CI. Its
-scope needs a caveat: it does not apply to these gates, which never cancel after
-this ADR, and even under `cancel:true` the incidental-label case produces a
-superseding `skipped` run rather than a persistent `cancelled` one. That
-correction lives in the dotfiles repo, not here.
-
-Full matrix, raw `gh` JSON, and per-trial outcomes: issue #115 and the throwaway
-repo `orestes-dev/gate-label-experiment-20260723-184613` (deleted once #114's
-verdict is recorded).
+(`opened`+`labeled`). It was later challenged by the `gh pr edit --add-label`
+case it never tested, a label added to an already-open PR whose required checks
+are already green, and re-measured across the full variant matrix. The decision
+is **confirmed and kept**, with no workflow change. The GitHub semantics that
+were measured, and the verdict on whether to enforce the labels-at-creation prose
+rule, are recorded in ADR
+[0022](0022-label-events-cannot-block-a-gate-protected-merge.md).
