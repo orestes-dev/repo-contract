@@ -6,6 +6,11 @@
 > path below reads as its `.repo-contract/hooks` equivalent; nothing else in this
 > ADR is affected.
 
+> **Amended (#125):** the report covers every hard-failing gate, not `pr-readiness`
+> alone, and keys off the vendored workflow file rather than the `scaffolds`
+> manifest. See [Amendment: every hard-failing gate, keyed off the file](#amendment-every-hard-failing-gate-keyed-off-the-file).
+> Report-never-repair is unchanged.
+
 Vendoring a gate workflow buys the check **running**. It does not buy the check
 **blocking**. What blocks a merge is a required-status-check rule on the default
 branch, which lives in repository settings that nothing in a repository can
@@ -33,7 +38,8 @@ them), and it already prints a per-file, per-label reconciliation report. Detect
 enforcement is one more read on that same session, so `init` gains a final
 **Protection** line: it reads the default branch's required contexts from **both**
 mechanisms GitHub offers (classic branch protection and rulesets, which compose)
-and reports whether the merge-blocking gate's `pr-readiness` context is among them.
+and reports whether the merge-blocking gate's `pr-readiness` context is among them
+(widened to every hard-failing gate's context by the amendment below).
 
 The read distinguishes five cases, because the ways this can be wrong are not
 interchangeable:
@@ -45,6 +51,11 @@ interchangeable:
 | `unprotected`   | the branch has no protection or ruleset at all      | warn     |
 | `not-installed` | no `pr-readiness*.yml` vendored; nothing to require | ok       |
 | `unreadable`    | a 403 hid the answer                                | ok       |
+
+The five cases survive the amendment below, which evaluates them **once per
+context** rather than once per run: read `not-installed` as "no workflow vendored
+for _this_ context", and `unprotected` / `unreadable` as facts about the branch that
+every context shares.
 
 `unreadable` earns its place: reading branch protection needs admin scope, so
 collapsing a 403 into `not-required` would tell every contributor without it that
@@ -100,9 +111,63 @@ reuses the `gh` session `init` already opened.
 - **Check every gate's context, not just the merge-blocking one.** Rejected for
   now: the issue gate runs on issues, which have no merge to block, and
   commit-hygiene is opt-in per repo. Only `pr-readiness` claims to block merge, so
-  only it can be wrong about it.
+  only it can be wrong about it. _Half-reversed by the amendment below: opt-in was
+  never a reason to skip the check, though the issue gate's exclusion stands._
 - **Report `unreadable` as a failure.** Rejected: it converts a permissions
   boundary into a false verdict.
+
+## Amendment: every hard-failing gate, keyed off the file
+
+The original scoped the report to `pr-readiness` on the grounds that
+"commit-hygiene is opt-in per repo". That confused opt-in with advisory. Both gates
+hard-fail CI, so an unrequired `commit-hygiene` context blocks exactly as little as
+an unrequired `pr-readiness` one, and a repo that deliberately opted into the
+un-silenceable CI mirror of the commit baseline was the last operator who should be
+told nothing about it not being enforced. Since #74 made commit-hygiene a scaffold
+an operator selects, the silence got louder rather than safer.
+
+So the reported set is **derived from the gates' `hardFail` policy**, not named by
+hand: `constants.js` cannot see the gate descriptors, and a hand-maintained list
+goes stale silently in the one direction that matters (a gate becomes blocking, the
+list does not, and the symptom is silence about an unenforced gate, the exact bug
+this ADR exists to kill). The issue gate's exclusion survives untouched, and now as
+a consequence rather than a special case: it is advisory, so it is not in the
+derived set.
+
+The five cases are preserved **per context**, so a repo can be told `pr-readiness`
+is required and `commit-hygiene` is not in the same run. `unprotected` and
+`unreadable` are facts about the branch rather than about a context, so the
+presentation groups the contexts sharing one verdict into a single line; the
+verdicts themselves stay per context, and the remediation fires once naming every
+drifted context, because requiring two checks is one visit to one settings page.
+
+### The predicate is the workflow file, not the manifest
+
+ADR 0016 made the `scaffolds` manifest an **authoritative whitelist**, so keying
+this report off anything else deserves an answer. The answer is that the manifest's
+authority covers what repo-contract owns and reconciles (what to install, what
+counts as drift, which labels to write, what `uninstall` may tear down) and has
+never covered what the platform executes. GitHub reads `.github/workflows/`; it has
+never read `.repo-contract.json`. The manifest records **scaffolds**; activation is
+a fact about **gate contexts**. They are facts about different objects and do not
+contest each other.
+
+Keying off the file is also the only reading that catches the case worth catching:
+an **orphan** gate workflow, on disk and absent from the manifest, runs on every PR
+and is exactly as unrequired as any other. A manifest-driven report is silent about
+it, and the orphan report cannot cover for that (its `enforcing` flag means
+`core.hooksPath`, which no gate scaffold claims). The other direction cannot
+diverge: `refuseDeselection` keeps the recorded set inside the selection, and
+`init`'s file loop writes every selected scaffold's files before the report runs, so
+"selected but no workflow on disk" is unreachable. A union of the two inputs would
+therefore report the same set as the file alone, through more code and one branch no
+`init` run can produce.
+
+The rejected alternative was to keep the section manifest-driven and give orphaned
+gates their activation verdict inside the orphan report. It splits one question
+("is merge on this branch actually protected?") across two sections by bookkeeping
+the operator does not care about, and it makes the orphan report, whose job is
+naming residue for `uninstall`, also the place enforcement posture is disclosed.
 
 ## Consequences
 
