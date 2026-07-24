@@ -11,13 +11,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
   HOOKS_PATH,
   ensureHooksPath,
+  foreignHooksPath,
   releaseHooksPath,
 } from "./hook-activation.js";
 
@@ -121,6 +122,35 @@ test("ensureHooksPath sets the managed value when local config leaves it unset",
     assert.equal(readLocalOrEmpty(dir), HOOKS_PATH);
     assert.match(lines[0], /^create\s+core\.hooksPath=\.repo-contract\/hooks/);
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// The whole reason ownership reads the *local* value, not the merged effective
+// one: a global tier-1 `core.hooksPath` (the agent-hygiene hooks) is inherited by
+// every fresh repo but is not repo-contract's to touch. Local unset under such a
+// global must still set the managed value, never treat the global as foreign and
+// block.
+test("ensureHooksPath sets the managed value when only a global (tier-1) value exists", () => {
+  const globalFile = mkdtempSync(join(tmpdir(), "rc-global-")) + "/config";
+  writeFileSync(globalFile, "[core]\n\thooksPath = /some/tier1/hooks\n");
+  const savedGlobal = process.env.GIT_CONFIG_GLOBAL;
+  const savedSystem = process.env.GIT_CONFIG_SYSTEM;
+  process.env.GIT_CONFIG_GLOBAL = globalFile;
+  process.env.GIT_CONFIG_SYSTEM = "/dev/null";
+  // Create the repo under the same global, so its local config starts unset.
+  const dir = withRepo(undefined);
+  try {
+    assert.equal(foreignHooksPath(dir), "", "the global value is not foreign");
+    const lines = [];
+    const outcome = ensureHooksPath({ cwd: dir, log: (l) => lines.push(l) });
+    assert.equal(outcome, "created");
+    assert.equal(readLocalOrEmpty(dir), HOOKS_PATH);
+  } finally {
+    if (savedGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = savedGlobal;
+    if (savedSystem === undefined) delete process.env.GIT_CONFIG_SYSTEM;
+    else process.env.GIT_CONFIG_SYSTEM = savedSystem;
     rmSync(dir, { recursive: true, force: true });
   }
 });
