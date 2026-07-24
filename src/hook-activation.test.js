@@ -71,7 +71,7 @@ test("releaseHooksPath unsets the managed local value and reports it", () => {
 });
 
 // A local value repo-contract did not set is not ours to remove: an operator's
-// own directory, or a legacy `.husky` ADR 0017 leaves for `init` to repair.
+// own directory, or a legacy `.husky` no command migrates forward (ADR 0021).
 test("releaseHooksPath leaves a foreign local value alone and reports it", () => {
   const dir = withRepo(".husky");
   try {
@@ -181,6 +181,28 @@ test("ensureHooksPath blocks a foreign value and leaves it untouched", () => {
     assert.match(report, /inert/);
     assert.match(report, /git config --local --unset core\.hooksPath/);
     assert.match(report, /--overwrite-hooks-path/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// The block is a discovery point, not just a refusal: whatever hook tool held
+// `core.hooksPath` can keep running through the local chain, so the message says
+// so, and says it without naming a tool, since the remedy is the same for all.
+test("the foreign-value block points at the local chain, tool-agnostically", () => {
+  // Not `.husky`: the block echoes the foreign value verbatim, so a husky value
+  // would satisfy the "names no tool" assertion trivially and by accident.
+  const dir = withRepo(".githooks");
+  try {
+    const lines = [];
+    ensureHooksPath({ cwd: dir, log: (l) => lines.push(l) });
+    const report = lines.join("\n");
+    assert.match(
+      report,
+      /\.repo-contract\/hooks\/local\/\{pre-commit,commit-msg\}/,
+    );
+    assert.match(report, /keep running/);
+    assert.doesNotMatch(report, /husky/i);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -6,6 +6,11 @@
 > replaced: `init` now sets `core.hooksPath` only when locally unset and leaves
 > any foreign value alone. The directory move and the collision-safe name below
 > stand.
+>
+> **Revisit closed by [ADR 0021](0021-the-local-chain-is-the-adoption-path.md).**
+> The `.husky/` migration rejected below stays rejected, for every prior hook
+> tool and not just husky: the `local/` chain is the adoption path, signposted
+> from the foreign-value block.
 
 The vendored git hooks, their consumer-owned extension point, and the
 `core.hooksPath` value all move from `.husky` to `.repo-contract/hooks`. The

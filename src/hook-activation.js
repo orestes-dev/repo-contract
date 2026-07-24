@@ -35,6 +35,17 @@ import { isAbsolute, resolve } from "node:path";
 // tell a consumer to set by hand.
 export const HOOKS_PATH = ".repo-contract/hooks";
 
+// The consumer-owned extension point the vendored hooks call last (CONTEXT.md,
+// `templates/git-hooks/pre-commit`). Named here because the foreign-value block
+// has to point a displaced operator at it: `core.hooksPath` is single-valued, so
+// taking the slot displaces whatever hook tool held it, and this chain is how
+// those hooks keep running. Deliberately tool-agnostic; naming husky (or any
+// other tool) would re-narrow a remedy that applies to all of them.
+//
+// Module-local: the chain is consumer-owned, so no other module here reads or
+// writes it, and only this message needs to name it.
+const LOCAL_CHAIN = `${HOOKS_PATH}/local`;
+
 /**
  * Read `core.hooksPath` as it applies to this checkout, or `""` when unset.
  * `git config --get` exits 1 on a missing key, which is not an error here. This
@@ -163,7 +174,10 @@ export function ensureHooksPath({
         `         Resolve it either way, with git-hooks selected: unset it\n` +
         `         (git config --local --unset core.hooksPath) and re-run init, or re-run with\n` +
         `         --overwrite-hooks-path to have repo-contract adopt ${HOOKS_PATH}\n` +
-        `         (the displaced value is not committed and cannot be recovered).`,
+        `         (the displaced value is not committed and cannot be recovered).\n` +
+        `         Either way the hooks you have now can keep running: move their bodies into\n` +
+        `         ${LOCAL_CHAIN}/{pre-commit,commit-msg} and the repo-contract hooks\n` +
+        `         chain to them on every commit.`,
     );
     return "blocked";
   }
