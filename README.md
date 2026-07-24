@@ -665,6 +665,16 @@ via `git diff`): a local `core.hooksPath` is committed nowhere, so overwriting i
 unrecoverable, and `init` prints the value it displaced. On a terminal, `init`
 prompts for the same opt-in instead of requiring the flag.
 
+Neither remedy costs you the hooks that value was pointing at. `core.hooksPath`
+is single-valued, so whatever held it (another hook manager, a plain
+`.git/hooks`, your own directory) stops being invoked once `.repo-contract/hooks`
+takes the slot; those hooks keep running if you move their bodies into
+`.repo-contract/hooks/local/pre-commit` and `.repo-contract/hooks/local/commit-msg`,
+which the shipped hooks chain to on every commit. That is the adoption path for
+any prior hook setup, and repo-contract builds no migration for a specific one:
+moving the bodies is a consumer-owned step, since `init` never writes under
+`.repo-contract/hooks/local/` and deletes nothing in your tree (ADR 0021).
+
 The managed value is deliberately relative. `core.hooksPath` lives in the shared
 `.git/config` that every linked worktree reads, so an absolute path pins them all
 to one fixed checkout's hooks, and a worktree on another branch runs rules it

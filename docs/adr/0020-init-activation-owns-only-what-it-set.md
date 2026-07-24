@@ -105,7 +105,9 @@ absolute-value repair inherited from ADR 0012.
   This was already the effective outcome once `init` repointed `core.hooksPath`
   (the stale files stopped being invoked); now `init` does not touch the value at
   all, so the consumer resolves it deliberately. Handling that leftover is a
-  separate, named follow-up.
+  separate, named follow-up, answered by
+  [ADR 0021](0021-the-local-chain-is-the-adoption-path.md): no migration is
+  built, and the `local/` chain is the adoption path for any displaced tool.
 
 - **A foreign `core.hooksPath` blocks installing `git-hooks` until resolved.** The
   operator unsets it and re-runs, or passes `--overwrite-hooks-path` / answers the
