@@ -11,6 +11,7 @@
 // between a consumer and whatever the range would float to on the day they run it.
 
 import { scaffold } from "./scaffolds.js";
+import { HOOKS_PATH } from "./hook-activation.js";
 
 /**
  * Whether this run may ask. Both ends must be a terminal: clack reads keystrokes
@@ -81,4 +82,29 @@ export async function promptForScaffolds(offer, installed) {
       : `Installing: ${picked.join(", ")}`,
   );
   return picked;
+}
+
+/**
+ * Ask whether to adopt a foreign local `core.hooksPath` (ADR 0020), the
+ * interactive twin of the `--overwrite-hooks-path` flag. The caller only reaches
+ * here on a TTY (`canPrompt`), with `git-hooks` selected and a foreign value
+ * present and the flag absent; a non-interactive run skips straight to the block
+ * instead of ever hanging on this question.
+ *
+ * Names the value at stake and that it is unrecoverable, and defaults to `false`:
+ * a distracted Enter keeps the operator's value rather than displacing it.
+ * Resolves to `false` on cancel, which lands on the same block as declining.
+ * @param {string} value - The foreign value that would be displaced.
+ * @returns {Promise<boolean>} Whether to overwrite.
+ */
+export async function promptForOverwriteHooksPath(value) {
+  const clack = await import("@clack/prompts");
+  const answer = await clack.confirm({
+    message:
+      `This repo's local core.hooksPath is '${value}', which repo-contract did not set. ` +
+      `Overwrite it with ${HOOKS_PATH} to activate the git hooks? The displaced value ` +
+      "is committed nowhere and cannot be recovered.",
+    initialValue: false,
+  });
+  return clack.isCancel(answer) ? false : answer === true;
 }

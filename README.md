@@ -639,20 +639,39 @@ the committed `.repo-contract.json` via `jq` and quotes the triggered opt-out's
 ### Activating them
 
 Git runs a hook only when `core.hooksPath` points at it, and that setting is
-per-clone git config which no repository can commit. So `init` sets it: it writes
-both hooks executable and points `core.hooksPath` at `.repo-contract/hooks`,
-reporting the step as `create`, `repair`, or `ok`. Git then executes the committed
+per-clone git config which no repository can commit. So `init` sets it: where this
+repo's **local** config leaves it unset, it writes both hooks executable and
+points `core.hooksPath` at `.repo-contract/hooks`, reporting the step as `create`
+or (when the managed value is already set) `ok`. Git then executes the committed
 files directly, with no shim, no `node_modules`, and no package-manager install. Where a
 repository exists and the setting cannot be written, `init` exits non-zero and
 says the baseline is not enforced; hooks that quietly do nothing are the failure
 this replaces (ADR 0012).
 
-The value is deliberately relative. `core.hooksPath` lives in the shared
+`init` owns only the value it set. A **foreign** local `core.hooksPath` is any
+value other than `.repo-contract/hooks` (a stale `.husky` from an old install,
+your own hooks directory, a deliberate absolute path): one repo-contract did not
+write, so it is not repointed (ADR 0020, the mirror of the way `uninstall`
+releases only the managed value and keeps anything else). Because a vendored hook
+git will never invoke is inert, a foreign value **blocks the `git-hooks` scaffold
+only**: it is
+detected in the pre-flight, none of its files are written, the other scaffolds
+install unaffected, and the run reports the block and exits non-zero. Resolve it
+either way the block names: unset the value
+(`git config --local --unset core.hooksPath`) and re-run `init`, or re-run with
+`--overwrite-hooks-path` to have repo-contract adopt `.repo-contract/hooks`. That
+flag is distinct from `--force` (which upgrades drifted committed files, recoverable
+via `git diff`): a local `core.hooksPath` is committed nowhere, so overwriting it is
+unrecoverable, and `init` prints the value it displaced. On a terminal, `init`
+prompts for the same opt-in instead of requiring the flag.
+
+The managed value is deliberately relative. `core.hooksPath` lives in the shared
 `.git/config` that every linked worktree reads, so an absolute path pins them all
 to one fixed checkout's hooks, and a worktree on another branch runs rules it
 never committed. `.repo-contract/hooks` resolves against each worktree's own root instead, so
-every worktree runs its own branch's hooks. `init` rewrites an absolute value it
-finds, and moves a legacy `.husky` or `.husky/_` path onto the new one as well.
+every worktree runs its own branch's hooks. repo-contract only ever writes the
+relative form, so an absolute value is foreign like any other and blocks rather
+than being silently relativised.
 
 Run `init` once per clone. A checkout where nobody ran it has the hook files on
 disk and no local enforcement, which nothing local can detect; the

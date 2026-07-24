@@ -24,12 +24,18 @@ const SCAFFOLD_HELP = SCAFFOLDS.map(
 /** Usage banner shared by the help path (stdout, exit 0) and the unknown-command path (stderr, exit 2). */
 const USAGE =
   "usage: repo-contract <init|uninstall|validate-issue|validate-pr|sweep>\n" +
-  "  init [--force] [--only <ids>]\n" +
+  "  init [--force] [--only <ids>] [--overwrite-hooks-path]\n" +
   "                   install a selected subset of repo-contract's features into\n" +
   "                   this repo, and activate the git hooks if selected\n" +
   "                   (core.hooksPath=.repo-contract/hooks, relative so linked\n" +
   "                   worktrees run their own)\n" +
   "                   (fails on drifted files; --force upgrades in place)\n" +
+  "                   A foreign local core.hooksPath (one repo-contract did not\n" +
+  "                   set: a stale .husky, your own directory, an absolute path)\n" +
+  "                   blocks the git-hooks scaffold only, writing none of its\n" +
+  "                   files; --overwrite-hooks-path adopts it (distinct from\n" +
+  "                   --force, since a local core.hooksPath is uncommitted and\n" +
+  "                   unrecoverable) and prints the value it displaced.\n" +
   "                   Scaffolds (--only takes a comma-separated list):\n" +
   SCAFFOLD_HELP +
   "\n" +

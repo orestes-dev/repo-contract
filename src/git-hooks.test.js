@@ -290,17 +290,77 @@ test("init sets core.hooksPath to the relative hook directory", () => {
   });
 });
 
-test("init repairs an absolute core.hooksPath into a relative one", () => {
+// A foreign local value is one repo-contract did not write. It is not repointed
+// on a routine run (ADR 0020): the git-hooks scaffold is blocked in the
+// pre-flight, none of its files are written, and the run exits non-zero — while
+// the other scaffolds still install.
+test("init blocks git-hooks on a foreign core.hooksPath and writes none of its files", () => {
+  withGitRepo((dir, git) => {
+    git("config", "core.hooksPath", ".husky");
+    const { status, stdout } = initInto(dir);
+    assert.notEqual(status, 0, "the block exits non-zero");
+    assert.match(stdout, /block\s+core\.hooksPath=\.husky/);
+    assert.match(stdout, /--overwrite-hooks-path/);
+    assert.match(stdout, /git config --local --unset core\.hooksPath/);
+    // The foreign value is left exactly as it was, and no hook files were laid down.
+    assert.equal(hooksPathOf(dir), ".husky");
+    for (const name of HOOK_NAMES) {
+      assert.ok(
+        !existsSync(join(dir, ".repo-contract", "hooks", name)),
+        `${name} was written despite the block`,
+      );
+    }
+    // The other scaffolds install regardless of local git config.
+    assert.ok(
+      existsSync(join(dir, ".github", "workflows", "issue-quality.yml")),
+      "a non-hooks scaffold was blocked too",
+    );
+    assert.match(stdout, /create .github\/workflows\/issue-quality\.yml/);
+  });
+});
+
+// An absolute value is foreign like any other now: repo-contract only ever writes
+// the relative form, so it never authored an absolute one. It blocks rather than
+// being silently relativised, and the block names the worktree-pinning hazard.
+test("init blocks an absolute core.hooksPath rather than relativising it", () => {
   withGitRepo((dir, git) => {
     git("config", "core.hooksPath", join(dir, ".repo-contract", "hooks"));
     const { status, stdout } = initInto(dir);
-    assert.equal(status, 0);
-    assert.match(
-      stdout,
-      /repair\s+core\.hooksPath=\.repo-contract\/hooks \(was '\//,
-    );
+    assert.notEqual(status, 0);
+    assert.match(stdout, /block\s+core\.hooksPath=\//);
     assert.match(stdout, /absolute/);
+    assert.equal(hooksPathOf(dir), join(dir, ".repo-contract", "hooks"));
+  });
+});
+
+// The explicit, separately-named opt-in adopts a foreign value, writes the hook
+// files, and prints the displaced value (uncommitted, so unrecoverable).
+test("--overwrite-hooks-path adopts a foreign value and prints the one it displaced", () => {
+  withGitRepo((dir, git) => {
+    git("config", "core.hooksPath", ".husky");
+    const { status, stdout } = initInto(dir, "--overwrite-hooks-path");
+    assert.equal(status, 0);
+    assert.match(stdout, /overwrite core\.hooksPath=\.repo-contract\/hooks/);
+    assert.match(stdout, /displaced '\.husky'/);
     assert.equal(hooksPathOf(dir), ".repo-contract/hooks");
+    for (const name of HOOK_NAMES) {
+      assert.ok(
+        isExecutable(join(dir, ".repo-contract", "hooks", name)),
+        `${name} not +x`,
+      );
+    }
+  });
+});
+
+// A hooks-only selection that hits a foreign value blocks and installs nothing:
+// there is no other scaffold to carry the run, so the exit is non-zero and clean.
+test("--only git-hooks on a foreign value blocks with nothing installed", () => {
+  withGitRepo((dir, git) => {
+    git("config", "core.hooksPath", ".husky");
+    const { status, stdout } = initInto(dir, "--only", "git-hooks");
+    assert.notEqual(status, 0);
+    assert.match(stdout, /block\s+core\.hooksPath=\.husky/);
+    assert.equal(hooksPathOf(dir), ".husky");
   });
 });
 

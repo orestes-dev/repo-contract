@@ -24,15 +24,27 @@ import { dirname, join, resolve } from "node:path";
 import { GitHub } from "../github.js";
 import { checkProtection, isDrift } from "../protection.js";
 import { CONFIG_FILENAME, SCAFFOLD, SCAFFOLD_IDS } from "../constants.js";
-import { filesFor, labelsFor, scaffold, selected } from "../scaffolds.js";
+import { filesFor, labelsFor, scaffold } from "../scaffolds.js";
 import { loadConfig, writeScaffolds } from "../config.js";
 import { resolveSelection } from "../selection.js";
-import { canPrompt, promptForScaffolds } from "../prompt.js";
+import {
+  canPrompt,
+  promptForScaffolds,
+  promptForOverwriteHooksPath,
+} from "../prompt.js";
 import {
   HOOKS_PATH,
   readHooksPath,
+  foreignHooksPath,
   ensureHooksPath,
 } from "../hook-activation.js";
+
+// The opt-in flag that lets `init` adopt a foreign local `core.hooksPath`
+// (ADR 0020). Deliberately distinct from `--force`: `--force` overwrites
+// drifted *committed* files, whose safety rests on git holding the receipts,
+// while a local `core.hooksPath` is uncommitted and unrecoverable, so adopting
+// one is a separate, explicitly-named force.
+const OVERWRITE_HOOKS_FLAG = "--overwrite-hooks-path";
 
 // A destination is `absent`, byte-identical (`ok`), or `drift` (stale upstream
 // or locally customized — indistinguishable without a version marker we don't
@@ -299,10 +311,16 @@ export function reportOrphans({ orphans, log }) {
  *
  * After the files, activate them, if the selection includes the hooks: each
  * vendored hook is written executable and `core.hooksPath` is set to the relative
- * `.repo-contract/hooks`, repairing any other value (ADR 0012, ADR 0017). That is
- * what makes a checkout which never ran a package-manager install enforce the
- * baseline, and what keeps a linked worktree on the hooks committed to its own
- * branch.
+ * `.repo-contract/hooks` where this repo's local config leaves it unset (ADR 0012,
+ * ADR 0017, ADR 0020). That is what makes a checkout which never ran a
+ * package-manager install enforce the baseline, and what keeps a linked worktree
+ * on the hooks committed to its own branch. A *foreign* local `core.hooksPath`
+ * (one repo-contract did not set) is not repointed: because a hook that cannot be
+ * activated is inert, a foreign value blocks the `git-hooks` scaffold **only** —
+ * detected in the pre-flight, none of its files written — while the other
+ * scaffolds install unaffected, and the run reports the block and exits non-zero.
+ * `--overwrite-hooks-path` (or the TTY prompt) adopts the foreign value, printing
+ * the one it displaced.
  *
  * Then reconcile the label schema the selection needs: create any missing label,
  * repair any whose color/description drifted. This needs credentials and repo
@@ -320,7 +338,8 @@ export function reportOrphans({ orphans, log }) {
  * last, after everything it claims has actually landed, so it never records an
  * install that a mid-run failure prevented.
  * @param {string[]} [argv] - Remaining CLI args; `--force` upgrades in place,
- *   `--only <ids>` selects scaffolds explicitly.
+ *   `--only <ids>` selects scaffolds explicitly, `--overwrite-hooks-path` adopts
+ *   a foreign local `core.hooksPath`.
  * @returns {Promise<void>}
  */
 export async function init(argv = []) {
@@ -347,7 +366,27 @@ export async function init(argv = []) {
   });
   console.log(`Installing ${ids.join(", ")} (selected by: ${source})\n`);
 
-  const entries = classify(ids);
+  // Hook-activation ownership, resolved in the pre-flight beside the drift gate
+  // (ADR 0020). A foreign local `core.hooksPath` blocks the `git-hooks` scaffold
+  // only: none of its files are written and it is not recorded, while the other
+  // scaffolds install unaffected. The `--overwrite-hooks-path` flag, or a TTY
+  // prompt, adopts the foreign value instead; with no opt-in and no terminal to
+  // ask, the block stands.
+  const wantsHooks = ids.includes(SCAFFOLD.GIT_HOOKS);
+  const foreign = wantsHooks ? foreignHooksPath(cwd) : "";
+  let overwriteHooks = argv.includes(OVERWRITE_HOOKS_FLAG);
+  if (foreign && !overwriteHooks && canPrompt()) {
+    overwriteHooks = await promptForOverwriteHooksPath(foreign);
+  }
+  const hooksBlocked = foreign !== "" && !overwriteHooks;
+  // Everything downstream (files, activation, labels, orphans, manifest, next
+  // steps) operates on the scaffolds actually installed, so a blocked `git-hooks`
+  // is neither written nor recorded as installed.
+  const fileIds = hooksBlocked
+    ? ids.filter((id) => id !== SCAFFOLD.GIT_HOOKS)
+    : ids;
+
+  const entries = classify(fileIds);
   const drifted = entries.filter((e) => e.state === DRIFT);
 
   // Atomic: any drift makes a plain run read-only. Report the full picture and
@@ -383,13 +422,18 @@ export async function init(argv = []) {
 
   // Activation follows the manifest: only a scaffold that declares it claims
   // `core.hooksPath`, so a repo that did not install the hooks never has its git
-  // config repointed at a directory it does not own.
-  const activates = selected(ids).some((s) => s.activatesHooks);
+  // config repointed at a directory it does not own. When `git-hooks` was
+  // selected, `ensureHooksPath` runs even under a block: with no opt-in it prints
+  // the loud block report (the files were already withheld above) and returns
+  // `blocked`; with the opt-in it adopts the foreign value.
   console.log("\nActivation:");
-  const activation = activates
-    ? ensureHooksPath({ log: (line) => console.log(line) })
-    : "not-installed";
-  if (!activates) {
+  let activation = "not-installed";
+  if (wantsHooks) {
+    activation = ensureHooksPath({
+      log: (line) => console.log(line),
+      overwrite: overwriteHooks,
+    });
+  } else {
     console.log(
       `skip     core.hooksPath (${SCAFFOLD.GIT_HOOKS} is not installed)`,
     );
@@ -401,36 +445,49 @@ export async function init(argv = []) {
   await ensureGateLabels({
     client,
     log: (line) => console.log(line),
-    ids,
+    ids: fileIds,
   });
 
   // Protection only concerns the PR gate, so it is only worth reading where that
   // gate was installed. checkProtection would report it as not-installed anyway;
   // skipping avoids spending an API call to say so.
-  if (ids.includes(SCAFFOLD.QUALITY_GATES)) {
+  if (fileIds.includes(SCAFFOLD.QUALITY_GATES)) {
     console.log("\nProtection:");
     await reportProtection({ client, log: (line) => console.log(line), cwd });
   }
 
-  const orphans = findOrphans(ids, cwd);
+  const orphans = findOrphans(fileIds, cwd);
   if (orphans.length > 0) {
     console.log("\nNot installed, but present on disk:");
     reportOrphans({ orphans, log: (line) => console.log(line) });
   }
 
   // The manifest goes last, once everything it claims has landed, so it never
-  // records an install a mid-run failure prevented.
-  writeScaffolds(ids, cwd);
-  console.log(`\nRecorded in ${CONFIG_FILENAME}: ${ids.join(", ")}`);
+  // records an install a mid-run failure prevented. A block leaves it untouched
+  // entirely: recording `git-hooks` as dropped would defeat both remedies the
+  // block prints, since a bare re-run (or one after `git config --local --unset`)
+  // reads the recorded selection and would never re-select the scaffold. Leaving
+  // the manifest as it was keeps a fresh repo's re-run all-in and a prior
+  // manifest's re-run faithful, so the hooks are retried either way. The
+  // already-written other scaffolds are re-selected and recorded on that re-run.
+  if (!hooksBlocked) {
+    writeScaffolds(fileIds, cwd);
+    console.log(`\nRecorded in ${CONFIG_FILENAME}: ${fileIds.join(", ")}`);
+  }
 
-  console.log(`\nDone. ${nextSteps(ids, activation)}`);
+  console.log(`\nDone. ${nextSteps(fileIds, activation)}`);
 
   // The rule points agents at the Author guides, which only exist where
   // `quality-gates` was installed. Printing it regardless would hand the operator
   // a rule naming two files their repo does not have.
-  if (ids.includes(SCAFFOLD.QUALITY_GATES)) {
+  if (fileIds.includes(SCAFFOLD.QUALITY_GATES)) {
     console.log(`\n${SUGGESTED_RULE}`);
   }
+
+  // A foreign `core.hooksPath` refused the `git-hooks` scaffold. The other
+  // scaffolds installed, but the requested hooks did not, so exit non-zero — the
+  // loud, single-step block the drift gate is modelled on (ADR 0020).
+  if (hooksBlocked) process.exit(1);
 }
 
 /**
