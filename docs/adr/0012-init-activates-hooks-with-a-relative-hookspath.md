@@ -5,6 +5,12 @@
 > is `templates/git-hooks/`. Every `.husky` path below reads as its
 > `.repo-contract/hooks` equivalent. The decision itself, that `init` performs
 > activation and the `core.hooksPath` value is relative, stands unchanged.
+>
+> **Also superseded in part by [ADR 0020](0020-init-activation-owns-only-what-it-set.md).**
+> `init` no longer repairs a foreign `core.hooksPath` (including an absolute one):
+> it sets the value only when locally unset and leaves anything it did not set
+> alone. That repo-contract's _own written_ value stays relative, and why, is
+> unchanged.
 
 Vendoring a hook file guarantees only that it _can_ run. Git runs it only when
 `core.hooksPath` points at the directory holding it and the file is executable.
