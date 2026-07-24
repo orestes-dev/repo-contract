@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { SCAFFOLDS } from "./scaffolds.js";
+import { SCAFFOLDS, contextsFor } from "./scaffolds.js";
+import { GATE_CONTEXT, SCAFFOLD } from "./constants.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -34,3 +35,35 @@ for (const { id, files } of SCAFFOLDS) {
     });
   }
 }
+
+// --- contexts: read from the vendored workflow files, never restated ---
+
+// A scaffold's contexts are a consequence of the workflows it vendors, which is
+// what `GATE_CONTEXT`'s filename-stem keying is for. Listing them per scaffold
+// would be one more place to forget when a gate is added or renamed.
+test("each scaffold's contexts are exactly those of the workflows it vendors", () => {
+  for (const { id, files } of SCAFFOLDS) {
+    const stems = files
+      .filter((f) => dirname(f.to) === join(".github", "workflows"))
+      .map((f) => basename(f.to, extname(f.to)));
+    assert.deepEqual(
+      contextsFor(id),
+      stems.map((stem) => GATE_CONTEXT[stem]),
+      `${id} must publish one context per vendored workflow`,
+    );
+  }
+});
+
+// The coupling the report and `nextSteps` both rest on: `quality-gates` carries
+// the advisory issue context alongside the merge-blocking PR one, and
+// `git-hooks` vendors no workflow at all.
+test("contextsFor spans both gates of quality-gates and none of git-hooks", () => {
+  assert.deepEqual(contextsFor(SCAFFOLD.QUALITY_GATES), [
+    GATE_CONTEXT["issue-quality"],
+    GATE_CONTEXT["pr-readiness"],
+  ]);
+  assert.deepEqual(contextsFor(SCAFFOLD.COMMIT_HYGIENE), [
+    GATE_CONTEXT["commit-hygiene"],
+  ]);
+  assert.deepEqual(contextsFor(SCAFFOLD.GIT_HOOKS), []);
+});

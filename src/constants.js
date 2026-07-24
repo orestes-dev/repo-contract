@@ -211,18 +211,19 @@ export const OPT_OUT = {
 // specifically was inexpressible (ADR 0013). Restated in the workflow YAML, which
 // cannot import this module; a drift test in `src/protection.test.js` guards the
 // coupling. Keyed by the workflow filename stem so `init`'s protection report can
-// map a vendored file to the context it is expected to publish.
+// map a vendored file to the context it is expected to publish, and the
+// declaration order is the order that report lists them in.
+//
+// Each Gate descriptor claims its own entry as `gate.context`. Which of those
+// contexts are merge-blocking is derived from the gates' `hardFail` policy in
+// `protection.js`, never restated here: this module cannot see the gates (they
+// import it), and a hand-maintained list goes stale in the one direction that
+// matters, a gate becoming blocking while the list does not (ADR 0014, amended).
 export const GATE_CONTEXT = {
   "issue-quality": "issue-quality",
   "pr-readiness": "pr-readiness",
   "commit-hygiene": "commit-hygiene",
 };
-
-// The one gate whose check is merge-blocking by design, and therefore the one
-// `init`'s protection report expects to find in the default branch's required
-// contexts. The issue gate is advisory (it runs on issues, which have no merge to
-// block), and commit-hygiene is opt-in per repo.
-export const MERGE_BLOCKING_GATE = "pr-readiness";
 
 // Scorecard line for an exempt object (a bot-authored PR): a single pass check,
 // so the gate still leaves a comment explaining why it did not enforce.

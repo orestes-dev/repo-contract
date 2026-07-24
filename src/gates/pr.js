@@ -14,6 +14,7 @@ import {
   PR_OVERRIDE_LABEL,
   OVERRIDE_HEADING,
   PR_COMMENT_MARKER,
+  GATE_CONTEXT,
 } from "../constants.js";
 
 /**
@@ -34,6 +35,7 @@ export const prGate = {
   commentMarker: PR_COMMENT_MARKER,
   presentation: PR_PRESENTATION,
   hardFail: true,
+  context: GATE_CONTEXT["pr-readiness"],
   exempt: (object) => (object.author ?? "").endsWith(BOT_SUFFIX),
   getNumber: (event) => event.pull_request?.number ?? event.number,
   getObject: async (gh, number) => {

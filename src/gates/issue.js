@@ -13,6 +13,7 @@ import {
   OVERRIDE_LABEL,
   OVERRIDE_HEADING,
   COMMENT_MARKER,
+  GATE_CONTEXT,
 } from "../constants.js";
 
 /**
@@ -30,6 +31,7 @@ export const issueGate = {
   commentMarker: COMMENT_MARKER,
   presentation: ISSUE_PRESENTATION,
   hardFail: false,
+  context: GATE_CONTEXT["issue-quality"],
   getNumber: (event) => event.issue?.number,
   getObject: (gh, number) => gh.getIssue(number),
   // Labels ride along so the validator can grade a `wontfix` issue as a

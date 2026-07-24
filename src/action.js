@@ -54,6 +54,9 @@ import { ApiUnavailableError } from "./github.js";
  * @property {Presentation} presentation - Scorecard chrome for the renderer.
  * @property {boolean} hardFail - Whether a failing verdict should fail CI (PR),
  *   or stay advisory (issue).
+ * @property {string} context - The status-check context this gate's workflow
+ *   publishes, from `GATE_CONTEXT`. Paired with `hardFail`, it is what lets the
+ *   merge-blocking set be derived rather than hand-listed (ADR 0014, amended).
  * @property {(event: any) => number|undefined} getNumber - The object number
  *   in the triggering event.
  * @property {(gh: GitHub, number: number) => Promise<GatedObject>} getObject -

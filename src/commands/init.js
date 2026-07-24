@@ -22,9 +22,17 @@ import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 
 import { GitHub } from "../github.js";
-import { checkProtection, isDrift } from "../protection.js";
+import {
+  checkProtection,
+  describe,
+  groupByVerdict,
+  installedMergeBlockingContexts,
+  installedOnly,
+  isDrift,
+  MERGE_BLOCKING_CONTEXTS,
+} from "../protection.js";
 import { CONFIG_FILENAME, SCAFFOLD, SCAFFOLD_IDS } from "../constants.js";
-import { filesFor, labelsFor, scaffold } from "../scaffolds.js";
+import { contextsFor, filesFor, labelsFor, scaffold } from "../scaffolds.js";
 import { loadConfig, writeScaffolds } from "../config.js";
 import { resolveSelection } from "../selection.js";
 import {
@@ -186,11 +194,12 @@ export async function ensureGateLabels({ client, log, ids }) {
 const WORKFLOW_DIR = join(".github", "workflows");
 
 /**
- * List the workflow basenames `checkProtection` matches the PR gate against.
+ * List the workflow basenames `checkProtection` matches the merge-blocking gates
+ * against.
  * @param {string} cwd
  * @returns {string[]}
  */
-function listWorkflowFiles(cwd) {
+export function listWorkflowFiles(cwd) {
   try {
     return readdirSync(resolve(cwd, WORKFLOW_DIR));
   } catch {
@@ -199,13 +208,20 @@ function listWorkflowFiles(cwd) {
 }
 
 /**
- * Report, as one advisory line, whether the merge-blocking PR gate is actually a
- * required status check on the default branch. This is the detection half of the
- * enforcement split (ADR 0014): vendoring the workflow makes the check run, and
+ * Report whether each merge-blocking gate vendored here is actually a required
+ * status check on the default branch. This is the detection half of the
+ * enforcement split (ADR 0014): vendoring a workflow makes the check run, and
  * only a required-status-check rule (a per-repo setting nothing here can commit)
  * makes it block. `init` reports the gap and deliberately never repairs it, so a
  * routine, half-attentive `init` across a fleet cannot require a currently-red
  * check and wedge every open PR at once.
+ *
+ * One line per verdict, not per context: `unprotected` and `unreadable` are facts
+ * about the branch that every context shares, so printing them once each would
+ * read as several findings where there is one. The verdicts stay per context, so
+ * a run can report `pr-readiness` required and `commit-hygiene` not. The
+ * remediation fires once naming every drifted context, because requiring two
+ * checks is one visit to one settings page.
  *
  * Never changes `init`'s exit code: missing enforcement is a repository-settings
  * fact, not an `init` failure, and the read may lack admin scope (reported
@@ -221,17 +237,24 @@ export async function reportProtection({ client, log, cwd = process.cwd() }) {
     log("skip     protection (no GitHub credentials or repo context)");
     return;
   }
-  const result = await checkProtection({
+  const results = await checkProtection({
     gh: client,
     workflowFiles: listWorkflowFiles(cwd),
   });
-  log(`${(isDrift(result) ? "warn" : "ok").padEnd(9)}${result.message}`);
-  if (isDrift(result)) {
-    log(
-      `         Requiring '${result.context}' on '${result.branch}' is a one-time admin act ` +
-        "init will not take for you: do it once the gate is green on the PRs you care about.",
-    );
+  // Only what is on disk: a `not-installed` line would name a gate this repo
+  // declined, which is prose about the package rather than about this repo.
+  const groups = groupByVerdict(installedOnly(results));
+  for (const group of groups) {
+    log(`${(isDrift(group) ? "warn" : "ok").padEnd(9)}${describe(group)}`);
   }
+  const drifted = groups.filter(isDrift);
+  if (drifted.length === 0) return;
+  const contexts = drifted.flatMap((g) => g.contexts).map((c) => `'${c}'`);
+  log(
+    `         Requiring ${contexts.join(" and ")} on '${drifted[0].branch}' is a one-time ` +
+      "admin act init will not take for you: do it once each gate is green on the PRs you " +
+      "care about.",
+  );
 }
 
 /**
@@ -448,10 +471,12 @@ export async function init(argv = []) {
     ids: fileIds,
   });
 
-  // Protection only concerns the PR gate, so it is only worth reading where that
-  // gate was installed. checkProtection would report it as not-installed anyway;
-  // skipping avoids spending an API call to say so.
-  if (fileIds.includes(SCAFFOLD.QUALITY_GATES)) {
+  // Protection concerns the merge-blocking gates whose workflows are on disk,
+  // which includes an orphan this run did not install and excludes a scaffold
+  // this repo never took. With none of them present there is nothing to require,
+  // and checkProtection spends no API call saying so, so the section is dropped
+  // rather than printed empty.
+  if (installedMergeBlockingContexts(listWorkflowFiles(cwd)).length > 0) {
     console.log("\nProtection:");
     await reportProtection({ client, log: (line) => console.log(line), cwd });
   }
@@ -489,16 +514,30 @@ export async function init(argv = []) {
 }
 
 /**
+ * The merge-blocking contexts a scaffold publishes, quoted for prose. Read from
+ * the workflow files the scaffold vendors, so neither paragraph below carries a
+ * context literal: the one place a context string is written down is
+ * `GATE_CONTEXT`, and the drift test already holds it to the YAML.
+ * @param {string} id
+ * @returns {string}
+ */
+const blocking = (id) =>
+  contextsFor(id)
+    .filter((context) => MERGE_BLOCKING_CONTEXTS.includes(context))
+    .map((context) => `'${context}'`)
+    .join(" and ");
+
+/**
  * The closing paragraph, assembled from the scaffolds that were actually
- * installed. Telling an operator to require the `pr-readiness` context, or that
- * the hooks are live, when they installed neither would be the same class of
- * mistake the activation report exists to prevent: prose that describes the
- * package rather than this repo.
+ * installed. Telling an operator to require a gate's context, or that the hooks
+ * are live, when they installed neither would be the same class of mistake the
+ * activation report exists to prevent: prose that describes the package rather
+ * than this repo.
  * @param {string[]} ids - The scaffolds installed.
  * @param {string} activation - The outcome of the `core.hooksPath` step.
  * @returns {string}
  */
-function nextSteps(ids, activation) {
+export function nextSteps(ids, activation) {
   const parts = [
     `Commit these files to opt this repo into: ${ids.join(", ")}.`,
   ];
@@ -520,6 +559,9 @@ function nextSteps(ids, activation) {
   if (ids.includes(SCAFFOLD.COMMIT_HYGIENE)) {
     parts.push(
       "CI keeps the un-bypassable copy of the commit baseline in the commit-hygiene gate.",
+      `That gate blocks merge only once its ${blocking(SCAFFOLD.COMMIT_HYGIENE)} context is a ` +
+        "required status check on the default branch (see the Protection section above); until " +
+        "then it reports on every PR and stops none of them.",
     );
   }
 
@@ -527,9 +569,10 @@ function nextSteps(ids, activation) {
     parts.push(
       "The issue gate only labels issues going forward. To backfill labels + scorecards " +
         "onto the existing open backlog, run: repo-contract sweep",
-      "The PR gate blocks merge only once its 'pr-readiness' context is a required status " +
-        "check on the default branch (see the Protection line above); vendoring the workflow " +
-        "makes it run, not block, and requiring the context stays a deliberate admin act.",
+      `The PR gate blocks merge only once its ${blocking(SCAFFOLD.QUALITY_GATES)} context is a ` +
+        "required status check on the default branch (see the Protection section above); " +
+        "vendoring the workflow makes it run, not block, and requiring the context stays a " +
+        "deliberate admin act.",
     );
   }
 
