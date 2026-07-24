@@ -175,18 +175,40 @@ narrates an implementation goes stale silently, because no drift test covers it.
 codebase **and this repo's own docs** open could not recover it. Names of
 functions and fields stay only where they are the term's canonical handle
 (`core.hooksPath` **is** the vocabulary), never as narration of how the code is
-arranged. The CLI surface is the sharpest case: a subcommand named as the actor
-of a rule is vocabulary (`init` ships the carrier and never the enforcement), but
-a flag, an exit code, or an invocation never is, because `--help` and the README
-own those and a glossary copy of them goes stale unnoticed. The deliberate
-overlaps that Accepted duplication covers are unaffected; the target is a
-glossary entry paraphrasing prose the README or this file already carries.
+arranged. The deliberate overlaps that Accepted duplication covers are unaffected;
+the target is a glossary entry paraphrasing prose the README or this file already
+carries.
 
 **The ownership split.** `CONTEXT.md` owns what a word means and what it is not.
-ADRs own why this option beat that one. Code owns how. An entry that argues links
-to its ADR; an entry that enumerates points at the code. An entry that exists only
-to describe a code artifact, with no vocabulary dispute and no boundary to guard,
-does not belong at all.
+ADRs own why this option beat that one. Code owns how, and "how" is runtime
+behaviour as much as code structure: what the tool does, in what order, at which
+moment, is the README's and `--help`'s, not a glossary entry's. An entry that
+argues links to its ADR; an entry that enumerates points at the code. An entry
+that exists only to describe a code artifact, with no vocabulary dispute and no
+boundary to guard, does not belong at all.
+
+The ownership split is mechanical enough to check sentence by sentence: **the
+subject of a glossary sentence is the term, and its verb is a copula.** When the
+subject becomes a tool and the verb an action it performs, you have started
+writing the manual. Try rewriting the sentence as _X is / is not Y_. If it
+survives the rewrite, it was vocabulary wearing a verb, so keep the rewrite and
+drop the verb. If it can only be said as _the tool does Z_, it belongs in the
+README.
+
+Behaviour earns a place only where it **is** the distinction, so that deleting it
+collapses the term into a neighbour: "vendoring buys execution, never activation"
+is the whole of why **Hook activation** has a name. Worked examples of the failing
+side:
+
+| Behaviour sentence                                                                          | Rewritten as vocabulary                                                                                       |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `init` never writes the local chain, so it survives the repair that rewrites a drifted hook | The chain is consumer-owned, so it sits outside what repo-contract writes, reconciles, or repairs             |
+| `init` reports the activation gap per context and never repairs it                          | Activation lives in per-repo settings, so it is the operator's to set and never a vendoring tool's to deliver |
+| The pre-commit hook scans staged Markdown; the commit-msg hook reads the message            | (cut: the rule's scope is already stated, and where each half runs is the code's)                             |
+
+A flag, an exit code, or an invocation is this test applied to CLI nouns: a
+subcommand named as the actor of a rule can be vocabulary, but `--help` owns the
+rest, and a glossary copy of it goes stale unnoticed.
 
 Three kinds of sentence survive regardless, because code cannot carry them: the
 boundary a term guards (what it is **not**, and the collision a qualified name
