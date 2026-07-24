@@ -433,9 +433,9 @@ It is deliberately conservative, the mirror of `init`'s assertiveness:
   representation (the absent key), never `[]`.
 - **Hooks.** Uninstalling `git-hooks` unsets this repo's local `core.hooksPath`
   only when it still holds the managed `.repo-contract/hooks` value, handing
-  activation back to any global tier-1 hooks. A value pointing elsewhere (an
-  operator's own directory, or a legacy `.husky` `init` repairs forward) is left
-  alone and reported.
+  activation back to any global tier-1 hooks. `uninstall` releases only the value
+  it set: anything else here (an operator's own directory, or a leftover from a
+  prior install) is not its to delete, so it is left alone and reported.
 - **Remote labels are never deleted.** They are applied to live issues and PRs,
   so `uninstall` names them as manual cleanup (`gh label delete <name>`) rather
   than removing them.

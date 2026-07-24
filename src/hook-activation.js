@@ -148,8 +148,9 @@ export function ensureHooksPath({ cwd = process.cwd(), log }) {
  * config, so a `core.hooksPath` there belongs to the operator (the tier-1
  * agent-hygiene hooks, precisely what should resume once the repo's own value is
  * gone) and is out of bounds. A *local* value that is not `.repo-contract/hooks`
- * is left alone and reported too: it may be a legacy `.husky` that ADR 0017
- * leaves for `init` to repair forward, not for `uninstall` to delete. Outside a
+ * is likewise left alone and reported: `uninstall` releases only the value it
+ * set, and touches nothing it did not, so anything else here (an operator's own
+ * directory, or a leftover from a prior install) is not ours to delete. Outside a
  * git repository, or with no local value set, there is nothing to release; say
  * so and move on.
  * @param {object} params
