@@ -1,5 +1,12 @@
 # The vendored hooks move to `.repo-contract/hooks/`
 
+> **Superseded in part by ADR 0020.** The repair-forward behavior this ADR
+> relies on (`ensureHooksPath` repointing `core.hooksPath` "at whatever the
+> current value is," and the absolute-value repair inherited from ADR 0012) is
+> replaced: `init` now sets `core.hooksPath` only when locally unset and leaves
+> any foreign value alone. The directory move and the collision-safe name below
+> stand.
+
 The vendored git hooks, their consumer-owned extension point, and the
 `core.hooksPath` value all move from `.husky` to `.repo-contract/hooks`. The
 canonical bundle moves with them, from `templates/husky/` to
